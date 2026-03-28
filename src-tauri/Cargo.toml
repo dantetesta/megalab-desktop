@@ -1,0 +1,30 @@
+[package]
+name = "lotolab"
+version = "3.8.0"
+description = "LotoLab - Laboratório de Loterias CAIXA"
+authors = ["Dante Testa"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.6", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.10.3", features = ["tray-icon"] }
+tauri-plugin-log = "2"
+tauri-plugin-clipboard-manager = "2"
+rusqlite = { version = "0.32", features = ["bundled"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+thiserror = "1"
+flate2 = "1"

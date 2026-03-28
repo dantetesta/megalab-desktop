@@ -1,15 +1,15 @@
 import { create } from 'zustand'
 
 interface ThemeStore {
-  theme: 'dark' | 'light'
+  theme: '' | 'light'
   toggleTheme: () => void
 }
 
 export const useThemeStore = create<ThemeStore>((set, get) => ({
-  theme: (localStorage.getItem('megalab-theme') as 'dark' | 'light') || 'dark',
+  theme: (localStorage.getItem('megalab-theme') === 'light' ? 'light' : '') as '' | 'light',
   toggleTheme: () => {
-    const next = get().theme === 'dark' ? 'light' : 'dark'
-    localStorage.setItem('megalab-theme', next)
+    const next = get().theme === '' ? 'light' : ''
+    localStorage.setItem('megalab-theme', next || 'dark')
     set({ theme: next })
   },
 }))

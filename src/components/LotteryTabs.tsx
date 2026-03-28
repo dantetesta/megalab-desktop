@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils'
+
 interface Props {
   activeGame: string
   onSelect: (gameType: string) => void
@@ -6,43 +8,24 @@ interface Props {
 
 export default function LotteryTabs({ activeGame, onSelect, games }: Props) {
   return (
-    <div style={{
-      display: 'flex',
-      gap: 2,
-      paddingBottom: 2,
-      borderBottom: '1px solid var(--ml-outline-variant)',
-    }}>
+    <div className="flex gap-0.5 pb-0.5 border-b border-border">
       {games.map((game) => {
         const isActive = activeGame === game.game_type
         return (
           <button
             key={game.game_type}
             onClick={() => onSelect(game.game_type)}
+            className={cn(
+              'px-4 py-2 rounded-t-[10px] text-[13px] font-semibold min-h-[40px]',
+              'border-none cursor-pointer transition-all duration-150',
+              isActive
+                ? 'border-b-2 hover:opacity-100'
+                : 'bg-transparent text-muted-foreground border-b-2 border-transparent hover:bg-accent',
+            )}
             style={{
-              padding: '8px 16px',
-              borderRadius: '10px 10px 0 0',
-              fontSize: 13,
-              fontWeight: 600,
-              minHeight: 40,
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              background: isActive
-                ? `color-mix(in srgb, ${game.color} 10%, transparent)`
-                : 'transparent',
-              color: isActive ? game.color : 'var(--ml-on-surface-variant)',
-              borderBottom: isActive ? `2px solid ${game.color}` : '2px solid transparent',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) {
-                e.currentTarget.style.background = 'var(--ml-surface-high)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) {
-                e.currentTarget.style.background = 'transparent'
-              }
+              ...(isActive
+                ? { background: `color-mix(in srgb, ${game.color} 10%, transparent)`, color: game.color, borderBottomColor: game.color }
+                : {}),
             }}
           >
             {game.display_name}

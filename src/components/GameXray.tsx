@@ -1,6 +1,7 @@
-import { type GameAnalysis } from '../lib/tauri'
+import { type GameAnalysis } from '@/lib/tauri'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import NumberBall from './NumberBall'
+import NumberBall from '@/components/NumberBall'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface Props {
   analysis: GameAnalysis
@@ -14,11 +15,10 @@ const tooltipStyle = {
   borderRadius: 10,
   color: '#e0e8ec',
   fontSize: 12,
-  fontFamily: 'Manrope',
+  fontFamily: 'Inter',
   padding: '8px 12px',
 }
 
-// Dynamic ideal sum ranges per lottery type based on number count and pool
 const getSumRange = (gameType?: string): { min: number; max: number } | null => {
   switch (gameType) {
     case 'megasena': return { min: 140, max: 220 }
@@ -29,7 +29,7 @@ const getSumRange = (gameType?: string): { min: number; max: number } | null => 
     case 'timemania': return { min: 270, max: 470 }
     case 'duplasena': return { min: 100, max: 180 }
     case 'maismilionaria': return { min: 120, max: 200 }
-    case 'supersete': return null // Super Sete uses columns, not sum ranges
+    case 'supersete': return null
     default: return null
   }
 }
@@ -45,26 +45,26 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
   ]
   const rangeData = rangeDataAll.filter(d => d.qtd > 0 || rangeDataAll.length <= 6)
 
-  const scoreLabel = (s: number) => s >= 70 ? { t: 'Excelente', c: 'var(--ml-primary)' } : s >= 50 ? { t: 'Bom', c: 'var(--ml-secondary)' } : { t: 'Regular', c: 'var(--ml-error)' }
+  const scoreLabel = (s: number) => s >= 70 ? { t: 'Excelente', c: 'var(--primary)' } : s >= 50 ? { t: 'Bom', c: 'var(--secondary)' } : { t: 'Regular', c: 'var(--destructive)' }
   const sc = scoreLabel(analysis.structural_score)
 
   return (
-    <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }} className="animate-expand">
+    <div className="mt-4 flex flex-col gap-4 animate-expand">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 3, height: 20, borderRadius: 4, background: 'linear-gradient(to bottom, var(--ml-primary), var(--ml-primary-container))' }} />
-        <h4 style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ml-primary)', margin: 0 }}>Raio-X do Jogo</h4>
+      <div className="flex items-center gap-2">
+        <div className="w-[3px] h-5 rounded bg-gradient-to-b from-primary to-primary/60" />
+        <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary">Raio-X do Jogo</h4>
       </div>
 
       {/* Score cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+      <div className="grid grid-cols-3 gap-2.5">
         <ScoreCard label="Score Estrutural" value={analysis.structural_score.toFixed(0)} sub={sc.t} color={sc.c} />
-        <ScoreCard label="Afinidade Histórica" value={analysis.affinity_score.toFixed(1)} sub="pontos" color="var(--ml-info)" />
-        <ScoreCard label="Dispersão" value={analysis.dispersion_score.toFixed(1)} sub="desvio padrão" />
+        <ScoreCard label="Afinidade Historica" value={analysis.affinity_score.toFixed(1)} sub="pontos" color="#5b9bd5" />
+        <ScoreCard label="Dispersao" value={analysis.dispersion_score.toFixed(1)} sub="desvio padrao" />
       </div>
 
       {/* Metrics grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div className="grid grid-cols-2 gap-2.5">
         <Metric label="Soma total" value={String(analysis.sum_total)} hint={(() => {
           const range = getSumRange(gameType)
           if (!range) return undefined
@@ -75,58 +75,66 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
           if (!range) return undefined
           return analysis.sum_total >= range.min && analysis.sum_total <= range.max
         })()} />
-        <Metric label="Pares / Ímpares" value={`${analysis.even_count}P / ${analysis.odd_count}I`} hint={analysis.even_count >= 2 && analysis.even_count <= 4 ? 'Equilibrado' : 'Desequilibrado'} ok={analysis.even_count >= 2 && analysis.even_count <= 4} />
-        <Metric label="Sequência máxima" value={`${analysis.max_sequence_length} consecutivo${analysis.max_sequence_length > 1 ? 's' : ''}`} hint={analysis.max_sequence_length < 3 ? 'Boa dispersão' : 'Sequência longa'} ok={analysis.max_sequence_length < 3} />
-        <Metric label="Distância média" value={`${analysis.avg_distance.toFixed(1)} posições`} />
-        <Metric label="Repete do último" value={`${analysis.repeats_from_last} dezena${analysis.repeats_from_last !== 1 ? 's' : ''}`} />
-        <Metric label="Combinação já saiu?" value={analysis.exact_match_count > 0 ? `Sim (${analysis.exact_match_count}x)` : 'Nunca — Inédita!'} ok={analysis.exact_match_count === 0} hint={analysis.exact_match_count > 0 ? 'Repetida no histórico' : 'Combinação original'} />
+        <Metric label="Pares / Impares" value={`${analysis.even_count}P / ${analysis.odd_count}I`} hint={analysis.even_count >= 2 && analysis.even_count <= 4 ? 'Equilibrado' : 'Desequilibrado'} ok={analysis.even_count >= 2 && analysis.even_count <= 4} />
+        <Metric label="Sequencia maxima" value={`${analysis.max_sequence_length} consecutivo${analysis.max_sequence_length > 1 ? 's' : ''}`} hint={analysis.max_sequence_length < 3 ? 'Boa dispersao' : 'Sequencia longa'} ok={analysis.max_sequence_length < 3} />
+        <Metric label="Distancia media" value={`${analysis.avg_distance.toFixed(1)} posicoes`} />
+        <Metric label="Repete do ultimo" value={`${analysis.repeats_from_last} dezena${analysis.repeats_from_last !== 1 ? 's' : ''}`} />
+        <Metric label="Combinacao ja saiu?" value={analysis.exact_match_count > 0 ? `Sim (${analysis.exact_match_count}x)` : 'Nunca - Inedita!'} ok={analysis.exact_match_count === 0} hint={analysis.exact_match_count > 0 ? 'Repetida no historico' : 'Combinacao original'} />
       </div>
 
       {/* Distribution chart */}
-      <div style={{ background: 'var(--ml-surface-container)', borderRadius: 14, padding: 16 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ml-on-surface-variant)', marginBottom: 12 }}>Distribuição por faixas de dezenas</p>
-        <ResponsiveContainer width="100%" height={compact ? 100 : 120}>
-          <BarChart data={rangeData} barCategoryGap="20%">
-            <XAxis dataKey="faixa" tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 10, fontFamily: 'Manrope' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} width={18} />
-            <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(110, 219, 166, 0.05)' }} />
-            <Bar dataKey="qtd" radius={[6, 6, 0, 0]}>
-              {rangeData.map((_e: { faixa: string; qtd: number }, i: number) => <Cell key={i} fill={_e.qtd > 0 ? 'var(--ml-primary)' : 'var(--ml-surface-highest)'} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Distribuicao por faixas de dezenas</p>
+          <ResponsiveContainer width="100%" height={compact ? 100 : 120}>
+            <BarChart data={rangeData} barCategoryGap="20%">
+              <XAxis dataKey="faixa" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} width={18} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(110, 219, 166, 0.05)' }} />
+              <Bar dataKey="qtd" radius={[6, 6, 0, 0]}>
+                {rangeData.map((_e: { faixa: string; qtd: number }, i: number) => <Cell key={i} fill={_e.qtd > 0 ? 'var(--primary)' : 'var(--muted)'} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       {/* Number details */}
       {analysis.number_details.length > 0 && (
         <div>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ml-on-surface-variant)', marginBottom: 10 }}>Detalhes por dezena</p>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(analysis.number_details.length, 6)}, 1fr)`, gap: 8 }}>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Detalhes por dezena</p>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(analysis.number_details.length, 6)}, 1fr)` }}>
             {analysis.number_details.map((d) => (
-              <div key={d.number} style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 10, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {gameType === 'supersete' && (
-                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ml-primary)', opacity: 0.7, marginBottom: 2 }}>C{analysis.number_details.indexOf(d) + 1}</span>
-                )}
-                <div style={{ marginBottom: 6 }}><NumberBall number={d.number} size="md" /></div>
-                <StatLine label="Frequência" value={d.historical_frequency} />
-                <StatLine label="Recente" value={d.recent_frequency} />
-                <StatLine label="Atraso" value={d.current_delay} />
-              </div>
+              <Card key={d.number}>
+                <CardContent className="p-2.5 text-center flex flex-col items-center">
+                  {gameType === 'supersete' && (
+                    <span className="text-[9px] font-bold text-primary/70 mb-0.5">C{analysis.number_details.indexOf(d) + 1}</span>
+                  )}
+                  <div className="mb-1.5"><NumberBall number={d.number} size="md" /></div>
+                  <StatLine label="Frequencia" value={d.historical_frequency} />
+                  <StatLine label="Recente" value={d.recent_frequency} />
+                  <StatLine label="Atraso" value={d.current_delay} />
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       )}
 
       {/* Signature matches */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div style={{ background: 'var(--ml-surface-container)', borderRadius: 14, padding: 14 }}>
-          <p style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', marginBottom: 4 }}>Mesma paridade no histórico</p>
-          <p style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{analysis.same_parity_count} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ml-on-surface-variant)' }}>concursos</span></p>
-        </div>
-        <div style={{ background: 'var(--ml-surface-container)', borderRadius: 14, padding: 14 }}>
-          <p style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', marginBottom: 4 }}>Mesma dist. de faixas no histórico</p>
-          <p style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{analysis.same_range_count} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ml-on-surface-variant)' }}>concursos</span></p>
-        </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        <Card>
+          <CardContent className="p-3.5">
+            <p className="text-[11px] text-muted-foreground mb-1">Mesma paridade no historico</p>
+            <p className="text-xl font-extrabold">{analysis.same_parity_count} <span className="text-[11px] font-medium text-muted-foreground">concursos</span></p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3.5">
+            <p className="text-[11px] text-muted-foreground mb-1">Mesma dist. de faixas no historico</p>
+            <p className="text-xl font-extrabold">{analysis.same_range_count} <span className="text-[11px] font-medium text-muted-foreground">concursos</span></p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
@@ -134,29 +142,33 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
 
 function ScoreCard({ label, value, sub, color }: { label: string; value: string; sub: string; color?: string }) {
   return (
-    <div style={{ background: 'var(--ml-surface-container)', borderRadius: 14, padding: 14, textAlign: 'center' }}>
-      <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ml-on-surface-variant)', marginBottom: 6 }}>{label}</p>
-      <p style={{ fontSize: 28, fontWeight: 800, margin: 0, lineHeight: 1, color: color || 'var(--ml-on-surface)' }}>{value}</p>
-      <p style={{ fontSize: 10, fontWeight: 600, marginTop: 4, color: color || 'var(--ml-on-surface-variant)' }}>{sub}</p>
-    </div>
+    <Card>
+      <CardContent className="p-3.5 text-center">
+        <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">{label}</p>
+        <p className="text-[28px] font-extrabold leading-none" style={{ color: color || 'var(--foreground)' }}>{value}</p>
+        <p className="text-[10px] font-semibold mt-1" style={{ color: color || 'var(--muted-foreground)' }}>{sub}</p>
+      </CardContent>
+    </Card>
   )
 }
 
 function Metric({ label, value, hint, ok }: { label: string; value: string; hint?: string; ok?: boolean }) {
   return (
-    <div style={{ background: 'var(--ml-surface-container)', borderRadius: 14, padding: 14 }}>
-      <p style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', marginBottom: 4 }}>{label}</p>
-      <p style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{value}</p>
-      {hint && <p style={{ fontSize: 10, marginTop: 4, fontWeight: 600, color: ok ? 'var(--ml-primary)' : 'var(--ml-secondary)' }}>{hint}</p>}
-    </div>
+    <Card>
+      <CardContent className="p-3.5">
+        <p className="text-[11px] text-muted-foreground mb-1">{label}</p>
+        <p className="text-lg font-extrabold">{value}</p>
+        {hint && <p className="text-[10px] mt-1 font-semibold" style={{ color: ok ? 'var(--primary)' : 'var(--secondary)' }}>{hint}</p>}
+      </CardContent>
+    </Card>
   )
 }
 
 function StatLine({ label, value }: { label: string; value: number }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
-      <span style={{ fontSize: 9, color: 'var(--ml-on-surface-variant)' }}>{label}</span>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-on-surface)' }}>{value}</span>
+    <div className="flex justify-between items-center py-0.5 w-full">
+      <span className="text-[9px] text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-bold text-foreground">{value}</span>
     </div>
   )
 }

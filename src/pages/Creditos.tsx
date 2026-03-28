@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { api, type CreditsData } from '../lib/tauri'
-import { useAppStore } from '../stores/appStore'
+import { api, type CreditsData } from '@/lib/tauri'
+import { useAppStore } from '@/stores/appStore'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { Copy, Globe, ExternalLink, GraduationCap, Loader2, CheckCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function Creditos() {
   const { showToast } = useAppStore()
@@ -14,9 +16,9 @@ export default function Creditos() {
     api.getCreditsData()
       .then(setCredits)
       .catch((e: any) => {
-        console.error('Erro ao carregar créditos:', e)
-        setError('Erro ao carregar página de créditos')
-        showToast('Erro ao carregar créditos', 'error')
+        console.error('Erro ao carregar creditos:', e)
+        setError('Erro ao carregar pagina de creditos')
+        showToast('Erro ao carregar creditos', 'error')
       })
   }, [])
 
@@ -26,72 +28,85 @@ export default function Creditos() {
     catch (e: any) { showToast(e?.toString() || 'Erro', 'error') }
   }
 
-  if (error) return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}><p style={{ fontSize: 16, color: 'var(--ml-error)' }}>❌ {error}</p><button onClick={() => window.location.reload()} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--ml-primary)', color: '#fff', border: 'none', cursor: 'pointer' }}>Tentar novamente</button></div>
+  if (error) return (
+    <div className="h-full flex items-center justify-center flex-col gap-4">
+      <p className="text-base text-destructive">{error}</p>
+      <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+    </div>
+  )
 
-  if (!credits) return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 size={32} className="animate-spin" style={{ color: 'var(--ml-primary)' }} /></div>
+  if (!credits) return <div className="h-full flex items-center justify-center"><Loader2 size={32} className="animate-spin text-primary" /></div>
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', padding: '32px 40px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+    <div className="h-full overflow-auto px-10 py-8">
+      <div className="max-w-[720px] mx-auto">
         {/* Cover image */}
-        <div style={{ borderRadius: 20, overflow: 'hidden', marginBottom: 24 }}>
-          <img src="/author.png" alt="Dante Testa - LotoLab" style={{ width: '100%', display: 'block' }} />
+        <div className="rounded-xl overflow-hidden mb-6">
+          <img src="/author.png" alt="Dante Testa - LotoLab" className="w-full block" />
         </div>
 
         {/* 2-column layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <div className="grid grid-cols-2 gap-4 mb-6">
           {/* Left: Message */}
-          <div style={{ background: 'var(--ml-surface-low)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--ml-on-surface)', marginBottom: 12 }}>{credits.message_headline}</h2>
-            <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--ml-on-surface-variant)', margin: 0 }}>{credits.message_body}</p>
-          </div>
+          <Card className="flex flex-col justify-center">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-extrabold text-foreground mb-3">{credits.message_headline}</h2>
+              <p className="text-sm leading-relaxed text-muted-foreground">{credits.message_body}</p>
+            </CardContent>
+          </Card>
 
           {/* Right: Pix */}
-          <div style={{ background: 'var(--ml-surface-low)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--ml-on-surface-variant)', textAlign: 'center' }}>{credits.pix_note}</p>
-            <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: '14px 20px', width: '100%', textAlign: 'center' }}>
-              <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--ml-on-surface-variant)', marginBottom: 6 }}>Chave Pix</p>
-              <p style={{ fontSize: 16, fontWeight: 800, fontFamily: 'monospace', color: 'var(--ml-primary)', wordBreak: 'break-all' }}>{credits.pix_key}</p>
-            </div>
-            <button onClick={handleCopyPix} className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: 14, padding: '12px 20px' }}>
-              {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
-              {copied ? 'Copiado!' : 'Copiar Chave Pix'}
-            </button>
-          </div>
+          <Card className="flex flex-col items-center justify-center">
+            <CardContent className="p-6 flex flex-col items-center gap-3.5 w-full">
+              <p className="text-xs font-semibold text-muted-foreground text-center">{credits.pix_note}</p>
+              <div className="bg-muted rounded-xl px-5 py-3.5 w-full text-center">
+                <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-1.5">Chave Pix</p>
+                <p className="text-base font-extrabold font-mono text-primary break-all">{credits.pix_key}</p>
+              </div>
+              <Button onClick={handleCopyPix} className="w-full justify-center gap-2">
+                {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
+                {copied ? 'Copiado!' : 'Copiar Chave Pix'}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Links - 2 columns */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-          <a href={credits.website} target="_blank" rel="noopener noreferrer" style={{
-            display: 'flex', alignItems: 'center', gap: 12, background: 'var(--ml-surface-low)', borderRadius: 14, padding: '16px 20px', textDecoration: 'none', transition: 'all 0.15s',
-          }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'color-mix(in srgb, var(--ml-primary) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Globe size={18} style={{ color: 'var(--ml-primary)' }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ml-on-surface)' }}>Site Oficial</div>
-              <div style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', marginTop: 2 }}>{credits.website.replace(/^https?:\/\//, '')}</div>
-            </div>
-            <ExternalLink size={14} style={{ color: 'var(--ml-on-surface-variant)', opacity: 0.4 }} />
+        {/* Links */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <a href={credits.website} target="_blank" rel="noopener noreferrer" className="no-underline">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[10px] bg-primary/12 flex items-center justify-center shrink-0">
+                  <Globe size={18} className="text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-foreground">Site Oficial</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{credits.website.replace(/^https?:\/\//, '')}</div>
+                </div>
+                <ExternalLink size={14} className="text-muted-foreground" />
+              </CardContent>
+            </Card>
           </a>
-          <a href={credits.academy_website} target="_blank" rel="noopener noreferrer" style={{
-            display: 'flex', alignItems: 'center', gap: 12, background: 'var(--ml-surface-low)', borderRadius: 14, padding: '16px 20px', textDecoration: 'none', transition: 'all 0.15s',
-          }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'color-mix(in srgb, var(--ml-info) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <GraduationCap size={18} style={{ color: 'var(--ml-info)' }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ml-on-surface)' }}>Academy</div>
-              <div style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', marginTop: 2 }}>{credits.academy_website.replace(/^https?:\/\//, '')}</div>
-            </div>
-            <ExternalLink size={14} style={{ color: 'var(--ml-on-surface-variant)', opacity: 0.4 }} />
+          <a href={credits.academy_website} target="_blank" rel="noopener noreferrer" className="no-underline">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[10px] bg-blue-500/12 flex items-center justify-center shrink-0">
+                  <GraduationCap size={18} className="text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-foreground">Academy</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{credits.academy_website.replace(/^https?:\/\//, '')}</div>
+                </div>
+                <ExternalLink size={14} className="text-muted-foreground" />
+              </CardContent>
+            </Card>
           </a>
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <p style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', opacity: 0.4 }}>{credits.api_credit}</p>
-          <p style={{ fontSize: 10, color: 'var(--ml-on-surface-variant)', opacity: 0.3, marginTop: 4 }}>LotoLab v{credits.app_version}</p>
+        <div className="text-center py-2">
+          <p className="text-[11px] text-muted-foreground">{credits.api_credit}</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">LotoLab v{credits.app_version}</p>
         </div>
       </div>
     </div>

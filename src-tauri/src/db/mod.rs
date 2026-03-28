@@ -198,6 +198,16 @@ impl Database {
         conn_ref.execute("ALTER TABLE saved_games ADD COLUMN game_type TEXT DEFAULT 'megasena'", []).ok();
         conn_ref.execute("ALTER TABLE saved_games ADD COLUMN bet_price_value REAL", []).ok();
 
+        // AI Config table for LotoCore v4.0
+        conn_ref.execute_batch(
+            "CREATE TABLE IF NOT EXISTS ai_config (
+                id INTEGER PRIMARY KEY,
+                provider TEXT NOT NULL DEFAULT 'gemini',
+                api_key TEXT NOT NULL DEFAULT '',
+                model TEXT NOT NULL DEFAULT 'gemini-2.0-flash'
+            );"
+        ).ok();
+
         // Migration: Fix contest_number UNIQUE constraint to be per-game_type
         // Check if the old UNIQUE index exists on contest_number alone
         let needs_migration: bool = conn_ref.query_row(

@@ -1,6 +1,9 @@
+mod ai;
 mod api;
+mod datamanager;
 mod db;
 mod generators;
+pub mod lotocore;
 mod models;
 mod registry;
 mod services;
@@ -1060,11 +1063,117 @@ fn get_credits_data() -> Result<CreditsData, String> {
         whatsapp: String::new(),
         email: String::new(),
         api_credit: "Dados consultados via loterias-api de guto-alves".to_string(),
-        app_version: "3.8.0".to_string(),
+        app_version: "4.0.0".to_string(),
         message_headline: "Créditos".to_string(),
         message_body: "O LotoLab foi idealizado e desenvolvido por Dante Testa. Se este aplicativo te ajudou a organizar melhor seus jogos, analisar resultados ou até mudar sua sorte, lembre com carinho de quem construiu essa ferramenta para você.".to_string(),
         pix_note: "Quer agradecer de forma espontânea? Meu Pix está logo abaixo.".to_string(),
     })
+}
+
+// ═══ LotoCore Engine ═══
+#[tauri::command]
+fn generate_lotocore(state: State<Arc<AppState>>, config: lotocore::LotoCoreConfig) -> Result<lotocore::LotoCoreResult, String> {
+    lotocore::generate_lotocore(&state.db, &config)
+}
+
+// ═══ AI Assistant ═══
+#[tauri::command]
+async fn ai_chat(state: State<'_, Arc<AppState>>, config: ai::AiConfig, messages: Vec<ai::AiMessage>, game_type: Option<String>) -> Result<ai::AiResponse, String> {
+    // Build database context for the active lottery
+    let gt = game_type.as_deref().unwrap_or("megasena");
+    let db_context = ai::build_db_context(&state.db, gt);
+
+    // Inject database context as a system-level data message before the conversation
+    let mut enriched_messages = Vec::with_capacity(messages.len() + 1);
+    enriched_messages.push(ai::AiMessage {
+        role: "user".to_string(),
+        content: format!("{}\n\n(Contexto automatico — use esses dados para responder com precisao. Nao mencione que recebeu dados automaticamente.)", db_context),
+    });
+    enriched_messages.push(ai::AiMessage {
+        role: "assistant".to_string(),
+        content: "Entendido! Tenho os dados da base carregados. Como posso te ajudar?".to_string(),
+    });
+    enriched_messages.extend(messages);
+
+    ai::chat(&config, enriched_messages, "").await
+}
+
+#[tauri::command]
+fn ai_query_db(state: State<Arc<AppState>>, sql: String) -> Result<String, String> {
+    ai::execute_safe_query(&state.db, &sql)
+}
+
+#[tauri::command]
+fn get_ai_config(state: State<Arc<AppState>>) -> Result<Option<ai::AiConfig>, String> {
+    let conn = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let result = conn.query_row(
+        "SELECT provider, api_key, model FROM ai_config LIMIT 1",
+        [],
+        |row| Ok(ai::AiConfig {
+            provider: row.get(0)?,
+            api_key: row.get(1)?,
+            model: row.get(2)?,
+        })
+    );
+    match result {
+        Ok(cfg) => Ok(Some(cfg)),
+        Err(_) => Ok(None),
+    }
+}
+
+#[tauri::command]
+fn save_ai_config(state: State<Arc<AppState>>, config: ai::AiConfig) -> Result<(), String> {
+    let conn = state.db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute_batch("CREATE TABLE IF NOT EXISTS ai_config (id INTEGER PRIMARY KEY, provider TEXT NOT NULL, api_key TEXT NOT NULL, model TEXT NOT NULL);").map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM ai_config", []).ok();
+    conn.execute(
+        "INSERT INTO ai_config (provider, api_key, model) VALUES (?1, ?2, ?3)",
+        rusqlite::params![config.provider, config.api_key, config.model]
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ═══ Data Management ═══
+#[tauri::command]
+fn audit_storage(state: State<Arc<AppState>>, app: tauri::AppHandle) -> Result<datamanager::StorageAudit, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    datamanager::audit_storage(&app_dir, &state.db)
+}
+
+#[tauri::command]
+fn clear_cache(app: tauri::AppHandle) -> Result<datamanager::CleanupResult, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    datamanager::clear_cache(&app_dir)
+}
+
+#[tauri::command]
+fn clear_temp(app: tauri::AppHandle) -> Result<datamanager::CleanupResult, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    datamanager::clear_temp(&app_dir)
+}
+
+#[tauri::command]
+fn clear_logs(app: tauri::AppHandle) -> Result<datamanager::CleanupResult, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    datamanager::clear_logs(&app_dir)
+}
+
+#[tauri::command]
+fn backup_database(app: tauri::AppHandle) -> Result<String, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    datamanager::backup_database(&app_dir)
+}
+
+#[tauri::command]
+fn safe_reset(state: State<Arc<AppState>>, app: tauri::AppHandle) -> Result<datamanager::CleanupResult, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    datamanager::safe_reset(&app_dir, &state.db)
+}
+
+#[tauri::command]
+fn auto_cleanup(app: tauri::AppHandle) -> Result<datamanager::CleanupResult, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    datamanager::auto_cleanup(&app_dir)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1146,6 +1255,21 @@ pub fn run() {
             get_lottery_config,
             sync_game,
             factory_reset,
+            // LotoCore Engine
+            generate_lotocore,
+            // AI Assistant
+            ai_chat,
+            ai_query_db,
+            get_ai_config,
+            save_ai_config,
+            // Data Management
+            audit_storage,
+            clear_cache,
+            clear_temp,
+            clear_logs,
+            backup_database,
+            safe_reset,
+            auto_cleanup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

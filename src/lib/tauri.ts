@@ -200,6 +200,24 @@ export const api = {
   getContestsCountPerGame: () => invoke<[string, number][]>('get_contests_count_per_game'),
   runManualSeedImport: () => invoke<string>('run_manual_seed_import'),
   factoryReset: () => invoke<string>('factory_reset'),
+
+  // ═══ LotoCore Engine ═══
+  generateLotoCore: (config: LotoCoreConfig) => invoke<LotoCoreResult>('generate_lotocore', { config }),
+
+  // ═══ AI Assistant ═══
+  aiChat: (config: AiConfig, messages: AiMessage[], gameType?: string) => invoke<AiResponse>('ai_chat', { config, messages, gameType: gameType || null }),
+  aiQueryDb: (sql: string) => invoke<string>('ai_query_db', { sql }),
+  getAiConfig: () => invoke<AiConfig | null>('get_ai_config'),
+  saveAiConfig: (config: AiConfig) => invoke<void>('save_ai_config', { config }),
+
+  // ═══ Data Management ═══
+  auditStorage: () => invoke<StorageAudit>('audit_storage'),
+  clearCache: () => invoke<CleanupResult>('clear_cache'),
+  clearTemp: () => invoke<CleanupResult>('clear_temp'),
+  clearLogs: () => invoke<CleanupResult>('clear_logs'),
+  backupDatabase: () => invoke<string>('backup_database'),
+  safeReset: () => invoke<CleanupResult>('safe_reset'),
+  autoCleanup: () => invoke<CleanupResult>('auto_cleanup'),
 }
 
 export interface DynamicDashboardStats {
@@ -239,4 +257,95 @@ export interface BetCheckResult {
   hits: number[]
   hit_count: number
   prize_label: string
+}
+
+// ═══ LotoCore Engine Types ═══
+
+export interface AlgorithmWeights {
+  frequency: number
+  entropy: number
+  patterns: number
+  genetic: number
+}
+
+export interface EnabledAlgorithms {
+  monte_carlo: boolean
+  frequency: boolean
+  delay: boolean
+  entropy: boolean
+  pattern_avoidance: boolean
+  bayesian: boolean
+  markov: boolean
+  genetic: boolean
+  annealing: boolean
+}
+
+export interface LotoCoreConfig {
+  game_type: string
+  pick_count: number
+  pool_size: number
+  num_games: number
+  simulation_depth: number
+  mode: string // "single" | "combined" | "weighted"
+  weights: AlgorithmWeights
+  enabled_algorithms: EnabledAlgorithms
+}
+
+export interface AlgorithmScores {
+  entropy: number
+  frequency: number
+  delay: number
+  bayesian: number
+  markov: number
+  pattern: number
+  balance: number
+}
+
+export interface LotoCoreGame {
+  numbers: number[]
+  score: number
+  algorithm_scores: AlgorithmScores
+}
+
+export interface LotoCoreResult {
+  games: LotoCoreGame[]
+  generation_time_ms: number
+  algorithms_used: string[]
+  total_candidates_evaluated: number
+}
+
+// ═══ AI Layer Types ═══
+
+export interface AiConfig {
+  provider: string // "openai" | "gemini"
+  api_key: string
+  model: string
+}
+
+export interface AiMessage {
+  role: string // "user" | "assistant" | "system"
+  content: string
+}
+
+export interface AiResponse {
+  message: string
+  config_json: string | null
+}
+
+// ═══ Data Management Types ═══
+
+export interface StorageAudit {
+  db_size_bytes: number
+  db_path: string
+  cache_size_bytes: number
+  log_size_bytes: number
+  temp_size_bytes: number
+  total_size_bytes: number
+  contests_count: number
+  saved_games_count: number
+}
+
+export interface CleanupResult {
+  freed_bytes: number
+  actions: string[]
 }

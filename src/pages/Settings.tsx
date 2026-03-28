@@ -1,13 +1,29 @@
 import { useState, useEffect, useCallback } from 'react'
-import { api, type LotteryConfig } from '../lib/tauri.ts'
-import { useAppStore } from '../stores/appStore.ts'
-import { useLotteryStore } from '../stores/lotteryStore.ts'
-import { useSyncStore, type GameSyncState } from '../stores/syncStore.ts'
+import { api, type LotteryConfig } from '@/lib/tauri'
+import { useAppStore } from '@/stores/appStore'
+import { useLotteryStore } from '@/stores/lotteryStore'
+import { useSyncStore, type GameSyncState } from '@/stores/syncStore'
+import { cn } from '@/lib/utils'
 import {
   Loader2, Star, RefreshCw, Pencil, Save, X,
   CheckCircle, Download, AlertCircle, Trash2, Square, Play,
   Search, StopCircle, RotateCcw,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 export default function Settings() {
   const { showToast } = useAppStore()
@@ -19,9 +35,7 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null)
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [resetting, setResetting] = useState(false)
-  const [confirmReset, setConfirmReset] = useState(false)
 
-  // Sync store (global, persists across navigation)
   const syncGames = useSyncStore(s => s.games)
   const checkGameStatus = useSyncStore(s => s.checkGameStatus)
   const checkAllGames = useSyncStore(s => s.checkAllGames)
@@ -42,7 +56,7 @@ export default function Settings() {
       setCounts(cm)
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : String(e)
-      console.error('Erro ao carregar configurações:', e)
+      console.error('Erro ao carregar configuracoes:', e)
       setError(errMsg)
       showToast(errMsg, 'error')
       setCatalog([])
@@ -75,84 +89,53 @@ export default function Settings() {
   const handleSetPrimary = async (gt: string) => {
     if (!enabledGames.includes(gt)) { showToast('Habilite a loteria primeiro.', 'error'); return }
     setPrimaryGame(gt); await saveAndReload(enabledGames, gt)
-    showToast(`${catalog.find(c => c.game_type === gt)?.display_name} é a principal!`, 'success')
+    showToast(`${catalog.find(c => c.game_type === gt)?.display_name} e a principal!`, 'success')
   }
-
 
   const anySyncing = Object.values(syncGames).some(g => g.status === 'syncing' || g.status === 'checking')
   const enabledGameTypes = catalog.filter(c => enabledGames.includes(c.game_type)).map(c => c.game_type)
 
-  const handleSyncAll = async () => {
-    await syncAllEnabled(enabledGameTypes)
-    loadData()
-  }
+  const handleSyncAll = async () => { await syncAllEnabled(enabledGameTypes); loadData() }
+  const handleCheckAll = async () => { await checkAllGames(enabledGameTypes) }
+  const handleSyncSingle = async (gt: string) => { await startSync(gt); loadData() }
 
-  const handleCheckAll = async () => {
-    await checkAllGames(enabledGameTypes)
-  }
+  if (loading) return <div className="h-full flex items-center justify-center"><Loader2 size={32} className="animate-spin text-primary" /></div>
 
-  const handleSyncSingle = async (gt: string) => {
-    await startSync(gt)
-    loadData()
-  }
-
-  if (loading) return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 size={32} className="animate-spin" style={{ color: 'var(--ml-primary)' }} /></div>
-
-  if (error) return <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 40 }}><p style={{ fontSize: 18, color: 'var(--ml-error)', fontWeight: 600 }}>Erro ao carregar</p><p style={{ fontSize: 14, color: 'var(--ml-on-surface-variant)', textAlign: 'center', maxWidth: 400 }}>{error}</p><button onClick={() => { setError(null); setLoading(true); loadData() }} style={{ padding: '10px 20px', borderRadius: 8, background: 'var(--ml-primary)', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Tentar novamente</button></div>
+  if (error) return (
+    <div className="h-full flex items-center justify-center flex-col gap-4 p-10">
+      <p className="text-lg text-destructive font-semibold">Erro ao carregar</p>
+      <p className="text-sm text-muted-foreground text-center max-w-[400px]">{error}</p>
+      <Button onClick={() => { setError(null); setLoading(true); loadData() }}>Tentar novamente</Button>
+    </div>
+  )
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', padding: '32px 40px' }}>
-      <div style={{ maxWidth: 820, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Configurações</h1>
-        <p style={{ fontSize: 14, color: 'var(--ml-on-surface-variant)', marginBottom: 28 }}>Gerencie loterias, valores e dados.</p>
+    <div className="h-full overflow-auto px-10 py-8">
+      <div className="max-w-[820px] mx-auto">
+        <h1 className="text-2xl font-extrabold mb-1 text-foreground">Configuracoes</h1>
+        <p className="text-sm text-muted-foreground mb-7">Gerencie loterias, valores e dados.</p>
 
-        {/* Loterias header with bulk actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Loterias</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleCheckAll}
-              disabled={anySyncing}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '6px 12px', borderRadius: 8, border: '1px solid var(--ml-outline-variant)',
-                background: 'var(--ml-surface)', color: 'var(--ml-on-surface-variant)',
-                fontSize: 11, fontWeight: 600, cursor: anySyncing ? 'default' : 'pointer',
-                fontFamily: 'inherit', opacity: anySyncing ? 0.5 : 1,
-              }}
-            >
+        {/* Loterias header */}
+        <div className="flex items-center justify-between mb-3.5">
+          <h2 className="text-[15px] font-bold">Loterias</h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleCheckAll} disabled={anySyncing} className="gap-1.5">
               <Search size={13} /> Verificar todas
-            </button>
+            </Button>
             {anySyncing ? (
-              <button
-                onClick={stopAll}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '6px 12px', borderRadius: 8, border: 'none',
-                  background: 'var(--ml-error)', color: '#fff',
-                  fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
+              <Button variant="destructive" size="sm" onClick={stopAll} className="gap-1.5">
                 <StopCircle size={13} /> Parar todas
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={handleSyncAll}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '6px 12px', borderRadius: 8, border: 'none',
-                  background: 'var(--ml-primary)', color: '#fff',
-                  fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
+              <Button size="sm" onClick={handleSyncAll} className="gap-1.5">
                 <Play size={13} /> Sincronizar todas
-              </button>
+              </Button>
             )}
           </div>
         </div>
 
         {/* Lottery cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10, marginBottom: 32 }}>
+        <div className="grid grid-cols-3 gap-3 mb-8">
           {catalog.map(l => {
             const isOn = enabledGames.includes(l.game_type)
             const isPri = primaryGame === l.game_type
@@ -178,99 +161,82 @@ export default function Settings() {
           })}
         </div>
 
-        {/* Importação de base de dados via URL */}
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Importação base de dados</h2>
-        <p style={{ fontSize: 12, color: 'var(--ml-on-surface-variant)', marginBottom: 14 }}>
+        {/* Importacao */}
+        <h2 className="text-[15px] font-bold mb-3.5">Importacao base de dados</h2>
+        <p className="text-xs text-muted-foreground mb-3.5">
           Baixe os dados de cada loteria individualmente a partir do servidor. Total atual: {Object.values(counts).reduce((a, b) => a + b, 0).toLocaleString('pt-BR')} concursos.
         </p>
         <SqlImportList catalog={catalog} counts={counts} onImported={loadData} />
 
         {/* Valores das apostas */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Valores das apostas</h2>
+        <div className="flex items-center justify-between mb-3.5">
+          <h2 className="text-[15px] font-bold">Valores das apostas</h2>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
+        <div className="flex flex-col gap-3.5 mb-8">
           {catalog.filter(c => enabledGames.includes(c.game_type)).map(l => <BetPriceEditor key={l.game_type} lottery={l} />)}
         </div>
 
         {/* Factory Reset */}
-        <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: 'var(--ml-error)' }}>Zona perigosa</h2>
-        <div style={{ background: 'color-mix(in srgb, var(--ml-error) 6%, var(--ml-surface-low))', borderRadius: 14, padding: 18, marginBottom: 32, border: '1px solid color-mix(in srgb, var(--ml-error) 20%, transparent)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Trash2 size={20} style={{ color: 'var(--ml-error)', flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--ml-on-surface)' }}>Resetar de fábrica</p>
-              <p style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)' }}>Apaga TODOS os dados: concursos, jogos salvos, estatísticas e configurações. Ação irreversível.</p>
-            </div>
-            {!confirmReset ? (
-              <button onClick={() => setConfirmReset(true)} style={{
-                fontSize: 12, padding: '8px 16px', borderRadius: 10, border: '1px solid var(--ml-error)',
-                background: 'transparent', color: 'var(--ml-error)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <Trash2 size={14} /> Resetar sistema
-              </button>
-            ) : (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => setConfirmReset(false)} style={{
-                  fontSize: 12, padding: '8px 14px', borderRadius: 10, border: 'none',
-                  background: 'var(--ml-surface-high)', color: 'var(--ml-on-surface-variant)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                }}>
-                  Cancelar
-                </button>
-                <button onClick={async () => {
-                  setResetting(true)
-                  try {
-                    const r = await api.factoryReset()
-                    showToast(r, 'success')
-                    setConfirmReset(false)
-                    await reloadLotteryStore()
-                    window.location.reload()
-                  } catch (e: unknown) { showToast(e instanceof Error ? e.message : String(e), 'error') }
-                  finally { setResetting(false) }
-                }} disabled={resetting} style={{
-                  fontSize: 12, padding: '8px 16px', borderRadius: 10, border: 'none',
-                  background: 'var(--ml-error)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', gap: 6, opacity: resetting ? 0.6 : 1,
-                }}>
-                  {resetting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  {resetting ? 'Resetando...' : 'Confirmar reset'}
-                </button>
+        <h2 className="text-[15px] font-bold mb-3.5 text-destructive">Zona perigosa</h2>
+        <Card className="mb-8 border-destructive/20 bg-destructive/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3.5">
+              <Trash2 size={20} className="text-destructive shrink-0" />
+              <div className="flex-1">
+                <p className="text-[13px] font-semibold text-foreground">Resetar de fabrica</p>
+                <p className="text-[11px] text-muted-foreground">Apaga TODOS os dados: concursos, jogos salvos, estatisticas e configuracoes. Acao irreversivel.</p>
               </div>
-            )}
-          </div>
-        </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-destructive border-destructive gap-1.5">
+                    <Trash2 size={14} /> Resetar sistema
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar reset de fabrica?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Essa acao ira apagar TODOS os dados: concursos, jogos salvos, estatisticas e configuracoes. Essa acao e irreversivel.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        setResetting(true)
+                        try {
+                          const r = await api.factoryReset()
+                          showToast(r, 'success')
+                          await reloadLotteryStore()
+                          window.location.reload()
+                        } catch (e: unknown) { showToast(e instanceof Error ? e.message : String(e), 'error') }
+                        finally { setResetting(false) }
+                      }}
+                      disabled={resetting}
+                    >
+                      {resetting ? <Loader2 size={14} className="animate-spin mr-2" /> : <Trash2 size={14} className="mr-2" />}
+                      {resetting ? 'Resetando...' : 'Confirmar reset'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
 }
 
-/* ───────── Lottery Card Component ───────── */
-
+/* Lottery Card */
 function LotteryCard({
-  lottery: l,
-  isEnabled: isOn,
-  isPrimary: isPri,
-  contestCount: cnt,
-  gameState,
-  syncGames: _syncGames,
-  onToggle,
-  onSetPrimary,
-  onSync,
-  onCheck,
-  onStop,
+  lottery: l, isEnabled: isOn, isPrimary: isPri, contestCount: cnt, gameState,
+  syncGames: _syncGames, onToggle, onSetPrimary, onSync, onCheck, onStop,
 }: {
-  lottery: LotteryConfig
-  isEnabled: boolean
-  isPrimary: boolean
-  contestCount: number
-  gameState: GameSyncState
-  syncGames: Record<string, GameSyncState>
-  onToggle: () => void
-  onSetPrimary: () => void
-  onSync: () => void
-  onCheck: () => void
-  onStop: () => void
+  lottery: LotteryConfig; isEnabled: boolean; isPrimary: boolean; contestCount: number;
+  gameState: GameSyncState; syncGames: Record<string, GameSyncState>;
+  onToggle: () => void; onSetPrimary: () => void; onSync: () => void; onCheck: () => void; onStop: () => void;
 }) {
   const isSyncing = gameState.status === 'syncing'
   const isChecking = gameState.status === 'checking'
@@ -278,182 +244,117 @@ function LotteryCard({
   const isError = gameState.status === 'error'
   const isPaused = gameState.status === 'paused'
   const isBusy = isSyncing || isChecking
-
-  // Check if any game is syncing globally (to disable certain actions)
   const anyBusy = Object.values(_syncGames).some(g => g.status === 'syncing' || g.status === 'checking')
 
   return (
-    <div style={{
-      background: isOn ? 'var(--ml-surface-low)' : 'var(--ml-surface)',
-      borderRadius: 14,
-      padding: '14px 16px',
-      border: isPri ? `2px solid ${l.color}` : '1px solid var(--ml-outline-variant)',
-      opacity: isOn ? 1 : 0.5,
-      transition: 'all 0.2s',
-    }}>
-      {/* Header row: name, star, toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <div style={{ width: 10, height: 10, borderRadius: '50%', background: l.color, flexShrink: 0 }} />
-        <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>{l.display_name}</span>
-        <button onClick={onSetPrimary} title="Principal" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: isPri ? l.color : 'var(--ml-on-surface-variant)', opacity: isPri ? 1 : 0.3 }}>
-          <Star size={15} fill={isPri ? 'currentColor' : 'none'} />
-        </button>
-        <button onClick={onToggle} disabled={isBusy} style={{
-          width: 42, height: 24, borderRadius: 12, border: 'none', cursor: isBusy ? 'default' : 'pointer',
-          background: isOn ? l.color : 'var(--ml-outline-variant)', position: 'relative', padding: 0,
-          transition: 'background 0.2s', opacity: isBusy ? 0.5 : 1,
-        }}>
-          <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: isOn ? 21 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-        </button>
-      </div>
-
-      {/* Info row: status + count */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <StatusIcon status={gameState.status} color={l.color} />
-          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ml-on-surface-variant)' }}>
-            {isOn ? 'Habilitada' : 'Desabilitada'}
-          </span>
+    <Card className={cn(
+      'transition-all',
+      !isOn && 'opacity-50',
+      isPri && 'ring-2',
+    )} style={isPri ? { borderColor: l.color, '--tw-ring-color': l.color } as React.CSSProperties : undefined}>
+      <CardContent className="p-4">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: l.color }} />
+          <span className="text-sm font-bold flex-1 text-foreground">{l.display_name}</span>
+          <button onClick={onSetPrimary} title="Principal" className={cn('bg-transparent border-none cursor-pointer p-0.5 flex transition-opacity', isPri ? 'opacity-100' : 'opacity-30 text-muted-foreground')} style={isPri ? { color: l.color } : undefined}>
+            <Star size={15} fill={isPri ? 'currentColor' : 'none'} />
+          </button>
+          <Switch checked={isOn} onCheckedChange={onToggle} disabled={isBusy} />
         </div>
-        {cnt > 0 && (
-          <span style={{ fontSize: 10, color: 'var(--ml-on-surface-variant)' }}>
-            {cnt.toLocaleString('pt-BR')} concursos
-          </span>
-        )}
-      </div>
 
-      {/* Progress bar when syncing */}
-      {isSyncing && (
-        <div style={{ marginBottom: 8 }}>
-          <div style={{
-            width: '100%', height: 4, borderRadius: 2,
-            background: 'var(--ml-surface-high)', overflow: 'hidden',
-          }}>
-            <div style={{
-              height: '100%', borderRadius: 2,
-              background: l.color,
-              width: '100%',
-              animation: 'syncPulse 1.5s ease-in-out infinite',
-            }} />
+        {/* Info row */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <StatusIcon status={gameState.status} color={l.color} />
+            <span className="text-[11px] font-medium text-muted-foreground">{isOn ? 'Habilitada' : 'Desabilitada'}</span>
           </div>
-          <style>{`@keyframes syncPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }`}</style>
+          {cnt > 0 && <span className="text-[10px] text-muted-foreground">{cnt.toLocaleString('pt-BR')} concursos</span>}
         </div>
-      )}
 
-      {/* Status message */}
-      {gameState.message && isOn && (
-        <div style={{
-          fontSize: 11, marginBottom: 8, fontWeight: 600, lineHeight: 1.3,
-          color: isError ? 'var(--ml-error)' : isDone ? l.color : isPaused ? 'var(--ml-warning, #f59e0b)' : 'var(--ml-on-surface-variant)',
-        }}>
-          {gameState.message}
-        </div>
-      )}
-
-      {/* Error detail */}
-      {isError && gameState.error && isOn && (
-        <div style={{
-          fontSize: 10, marginBottom: 8, padding: '6px 8px', borderRadius: 6,
-          background: 'color-mix(in srgb, var(--ml-error) 10%, transparent)',
-          color: 'var(--ml-error)', lineHeight: 1.3,
-        }}>
-          {gameState.error}
-        </div>
-      )}
-
-      {/* Missing count */}
-      {gameState.missing > 0 && !isSyncing && isOn && (
-        <div style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', marginBottom: 8, fontWeight: 500 }}>
-          {gameState.missing} concursos faltando
-        </div>
-      )}
-
-      {/* Action buttons */}
-      {isOn && (
-        <div style={{ display: 'flex', gap: 6 }}>
-          {cnt === 0 && !isSyncing ? (
-            <div style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              padding: '7px 10px', borderRadius: 8,
-              background: 'color-mix(in srgb, var(--ml-on-surface-variant) 8%, transparent)',
-              color: 'var(--ml-on-surface-variant)', fontSize: 11, fontWeight: 600,
-            }}>
-              <AlertCircle size={13} /> Importe os dados primeiro
+        {/* Progress bar */}
+        {isSyncing && (
+          <div className="mb-2">
+            <div className="w-full h-1 rounded bg-muted overflow-hidden">
+              <div className="h-full rounded animate-pulse" style={{ background: l.color, width: '100%' }} />
             </div>
-          ) : isSyncing ? (
-            <button onClick={onStop} style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: 'var(--ml-error)', color: '#fff',
-              fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
-            }}>
-              <Square size={12} /> Parar
-            </button>
-          ) : isDone && gameState.missing === 0 ? (
-            <div style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              padding: '7px 10px', borderRadius: 8,
-              background: `color-mix(in srgb, ${l.color} 12%, transparent)`,
-              color: l.color, fontSize: 11, fontWeight: 600,
-            }}>
-              <CheckCircle size={13} /> Atualizado
-            </div>
-          ) : isError ? (
-            <button onClick={onSync} disabled={anyBusy} style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              padding: '7px 10px', borderRadius: 8, border: 'none', cursor: anyBusy ? 'default' : 'pointer',
-              background: 'var(--ml-error)', color: '#fff',
-              fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: anyBusy ? 0.5 : 1,
-            }}>
-              <RotateCcw size={12} /> Tentar novamente
-            </button>
-          ) : (
-            <>
-              <button onClick={onSync} disabled={anyBusy} style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                padding: '7px 10px', borderRadius: 8, border: 'none', cursor: anyBusy ? 'default' : 'pointer',
-                background: l.color, color: '#fff',
-                fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: anyBusy ? 0.5 : 1,
-              }}>
-                <RefreshCw size={12} /> Sincronizar
-              </button>
-              <button onClick={onCheck} disabled={anyBusy} title="Verificar status" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '7px 10px', borderRadius: 8, border: '1px solid var(--ml-outline-variant)',
-                background: 'var(--ml-surface)', cursor: anyBusy ? 'default' : 'pointer',
-                color: 'var(--ml-on-surface-variant)', opacity: anyBusy ? 0.5 : 1,
-              }}>
-                {isChecking ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
-              </button>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+
+        {/* Status message */}
+        {gameState.message && isOn && (
+          <div className={cn(
+            'text-[11px] mb-2 font-semibold leading-snug',
+            isError && 'text-destructive',
+            isDone && !isError && '',
+            isPaused && 'text-amber-500',
+            !isError && !isDone && !isPaused && 'text-muted-foreground',
+          )} style={isDone && !isError ? { color: l.color } : undefined}>
+            {gameState.message}
+          </div>
+        )}
+
+        {/* Error detail */}
+        {isError && gameState.error && isOn && (
+          <div className="text-[10px] mb-2 px-2 py-1.5 rounded-md bg-destructive/10 text-destructive leading-snug">
+            {gameState.error}
+          </div>
+        )}
+
+        {/* Missing count */}
+        {gameState.missing > 0 && !isSyncing && isOn && (
+          <div className="text-[11px] text-muted-foreground mb-2 font-medium">{gameState.missing} concursos faltando</div>
+        )}
+
+        {/* Action buttons */}
+        {isOn && (
+          <div className="flex gap-1.5">
+            {cnt === 0 && !isSyncing ? (
+              <div className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/50 text-muted-foreground text-[11px] font-semibold">
+                <AlertCircle size={13} /> Importe os dados primeiro
+              </div>
+            ) : isSyncing ? (
+              <Button variant="destructive" size="sm" onClick={onStop} className="flex-1 gap-1.5">
+                <Square size={12} /> Parar
+              </Button>
+            ) : isDone && gameState.missing === 0 ? (
+              <div className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold" style={{ background: `color-mix(in srgb, ${l.color} 12%, transparent)`, color: l.color }}>
+                <CheckCircle size={13} /> Atualizado
+              </div>
+            ) : isError ? (
+              <Button size="sm" variant="destructive" onClick={onSync} disabled={anyBusy} className="flex-1 gap-1.5">
+                <RotateCcw size={12} /> Tentar novamente
+              </Button>
+            ) : (
+              <>
+                <Button size="sm" onClick={onSync} disabled={anyBusy} className="flex-1 gap-1.5" style={{ background: l.color }}>
+                  <RefreshCw size={12} /> Sincronizar
+                </Button>
+                <Button variant="outline" size="sm" onClick={onCheck} disabled={anyBusy} title="Verificar status">
+                  {isChecking ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
-/* ───────── Status Icon ───────── */
-
+/* Status Icon */
 function StatusIcon({ status, color }: { status: GameSyncState['status']; color: string }) {
   switch (status) {
-    case 'checking':
-      return <Loader2 size={12} className="animate-spin" style={{ color }} />
-    case 'syncing':
-      return <Loader2 size={12} className="animate-spin" style={{ color }} />
-    case 'done':
-      return <CheckCircle size={12} style={{ color }} />
-    case 'error':
-      return <AlertCircle size={12} style={{ color: 'var(--ml-error)' }} />
-    case 'paused':
-      return <Square size={12} style={{ color: 'var(--ml-warning, #f59e0b)' }} />
-    default:
-      return null
+    case 'checking': return <Loader2 size={12} className="animate-spin" style={{ color }} />
+    case 'syncing': return <Loader2 size={12} className="animate-spin" style={{ color }} />
+    case 'done': return <CheckCircle size={12} style={{ color }} />
+    case 'error': return <AlertCircle size={12} className="text-destructive" />
+    case 'paused': return <Square size={12} className="text-amber-500" />
+    default: return null
   }
 }
 
-/* ───────── BetPriceEditor (unchanged) ───────── */
-
+/* BetPriceEditor */
 function BetPriceEditor({ lottery }: { lottery: LotteryConfig }) {
   const { showToast } = useAppStore()
   const [prices, setPrices] = useState<Record<number, number | null>>({})
@@ -483,9 +384,7 @@ function BetPriceEditor({ lottery }: { lottery: LotteryConfig }) {
     try {
       for (const [pick, val] of Object.entries(editValues)) {
         const n = parseFloat(val.replace(',', '.'))
-        if (!isNaN(n) && n > 0) {
-          await api.updateBetPrice(lottery.game_type, parseInt(pick), n)
-        }
+        if (!isNaN(n) && n > 0) await api.updateBetPrice(lottery.game_type, parseInt(pick), n)
       }
       showToast('Valores salvos!', 'success')
       setEditing(false)
@@ -497,55 +396,57 @@ function BetPriceEditor({ lottery }: { lottery: LotteryConfig }) {
   const fmt = (v: number | null | undefined) => v && typeof v === 'number' ? `R$ ${v.toFixed(2).replace('.', ',')}` : '--'
 
   return (
-    <div style={{ background: 'var(--ml-surface-low)', borderRadius: 14, padding: '14px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: lottery.color }} />
-        <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>{lottery.display_name}</span>
-        {!editing ? (
-          <button onClick={startEditing} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--ml-primary)', fontFamily: 'inherit' }}>
-            <Pencil size={12} /> Editar
-          </button>
-        ) : (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={saveEdits} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--ml-primary)', fontFamily: 'inherit' }}>
-              <Save size={12} /> Salvar
-            </button>
-            <button onClick={() => setEditing(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--ml-error)', fontFamily: 'inherit' }}>
-              <X size={12} /> Cancelar
-            </button>
-          </div>
-        )}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 6 }}>
-        {picks.map(p => (
-          <div key={p} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--ml-surface)', borderRadius: 8, padding: '6px 10px' }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ml-on-surface-variant)' }}>{p} num.</span>
-            {editing ? (
-              <input type="text" value={editValues[p] || ''} onChange={e => setEditValues(prev => ({ ...prev, [p]: e.target.value }))}
-                style={{ width: 70, textAlign: 'right', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', color: 'var(--ml-on-surface)', background: 'var(--ml-surface-high)', border: `1px solid ${lottery.color}`, borderRadius: 6, padding: '3px 6px', outline: 'none' }}
-                placeholder="0.00" />
-            ) : (
-              <span style={{ fontSize: 12, fontWeight: 700, color: prices[p] !== null ? 'var(--ml-on-surface)' : 'var(--ml-on-surface-variant)' }}>{fmt(prices[p])}</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="w-2 h-2 rounded-full" style={{ background: lottery.color }} />
+          <span className="text-[13px] font-bold flex-1">{lottery.display_name}</span>
+          {!editing ? (
+            <Button variant="ghost" size="sm" onClick={startEditing} className="gap-1 text-[11px] font-semibold text-primary h-7 px-2">
+              <Pencil size={12} /> Editar
+            </Button>
+          ) : (
+            <div className="flex gap-1.5">
+              <Button variant="ghost" size="sm" onClick={saveEdits} className="gap-1 text-[11px] font-semibold text-primary h-7 px-2"><Save size={12} /> Salvar</Button>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(false)} className="gap-1 text-[11px] font-semibold text-destructive h-7 px-2"><X size={12} /> Cancelar</Button>
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(110px,1fr))] gap-2">
+          {picks.map(p => (
+            <div key={p} className="flex items-center justify-between bg-muted rounded-lg px-2.5 py-1.5">
+              <span className="text-[11px] font-semibold text-muted-foreground">{p} num.</span>
+              {editing ? (
+                <Input
+                  type="text"
+                  value={editValues[p] || ''}
+                  onChange={e => setEditValues(prev => ({ ...prev, [p]: e.target.value }))}
+                  className="w-[70px] text-right text-[13px] font-bold h-7 px-1.5"
+                  style={{ borderColor: lottery.color }}
+                  placeholder="0.00"
+                />
+              ) : (
+                <span className={cn('text-xs font-bold', prices[p] !== null ? 'text-foreground' : 'text-muted-foreground')}>{fmt(prices[p])}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
-/* ───────── SQL Import List (unchanged) ───────── */
-
+/* SQL Import List */
 const SQL_FILES: { game_type: string; label: string; file: string }[] = [
   { game_type: 'megasena', label: 'Mega-Sena', file: 'megasena.sql' },
-  { game_type: 'lotofacil', label: 'Lotofácil', file: 'lotofacil.sql' },
+  { game_type: 'lotofacil', label: 'Lotofacil', file: 'lotofacil.sql' },
   { game_type: 'lotomania', label: 'Lotomania', file: 'lotomania.sql' },
   { game_type: 'timemania', label: 'Timemania', file: 'timemania.sql' },
   { game_type: 'quina', label: 'Quina', file: 'quina.sql' },
   { game_type: 'duplasena', label: 'Dupla Sena', file: 'duplasena.sql' },
   { game_type: 'diadesorte', label: 'Dia de Sorte', file: 'diadesorte.sql' },
   { game_type: 'supersete', label: 'Super Sete', file: 'supersete.sql' },
-  { game_type: 'maismilionaria', label: '+Milionária', file: 'maismilionaria.sql' },
+  { game_type: 'maismilionaria', label: '+Milionaria', file: 'maismilionaria.sql' },
 ]
 
 function SqlImportList({ catalog, counts, onImported }: { catalog: LotteryConfig[]; counts: Record<string, number>; onImported: () => void }) {
@@ -558,10 +459,8 @@ function SqlImportList({ catalog, counts, onImported }: { catalog: LotteryConfig
     setDownloading(prev => ({ ...prev, [item.game_type]: true }))
     setErrors(prev => { const n = { ...prev }; delete n[item.game_type]; return n })
     setSuccesses(prev => { const n = { ...prev }; delete n[item.game_type]; return n })
-
     try {
       const url = `https://dantetesta.com.br/lotolab/loterias/${item.file}`
-      // Download via Rust backend (bypasses CORS)
       const result = await api.downloadAndImportSql(url, item.game_type)
       setSuccesses(prev => ({ ...prev, [item.game_type]: true }))
       showToast(`${item.label}: ${result}`, 'success')
@@ -576,57 +475,50 @@ function SqlImportList({ catalog, counts, onImported }: { catalog: LotteryConfig
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10, marginBottom: 24 }}>
+    <div className="grid grid-cols-3 gap-3 mb-6">
       {SQL_FILES.map(item => {
         const isLoading = downloading[item.game_type] || false
         const error = errors[item.game_type]
         const success = successes[item.game_type]
         const catItem = catalog.find(c => c.game_type === item.game_type)
-        const color = catItem?.color || 'var(--ml-primary)'
+        const color = catItem?.color || 'var(--primary)'
         const cnt = counts[item.game_type] || 0
 
         return (
-          <div key={item.game_type} style={{
-            background: 'var(--ml-surface-low)', borderRadius: 14, padding: '14px 16px',
-            border: success ? `1px solid ${color}` : '1px solid var(--ml-outline-variant)',
-            transition: 'all 0.2s',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 700, flex: 1, color: 'var(--ml-on-surface)' }}>{item.label}</span>
-              {cnt > 0 && <span style={{ fontSize: 10, color: 'var(--ml-on-surface-variant)' }}>{cnt.toLocaleString('pt-BR')}</span>}
-            </div>
-
-            {error && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 8, padding: '6px 8px', borderRadius: 8, background: 'color-mix(in srgb, var(--ml-error) 10%, transparent)' }}>
-                <AlertCircle size={13} style={{ color: 'var(--ml-error)', flexShrink: 0, marginTop: 1 }} />
-                <span style={{ fontSize: 11, color: 'var(--ml-error)', lineHeight: 1.3 }}>{error}</span>
+          <Card key={item.game_type} className={cn('transition-all', success && 'ring-1')} style={success ? { borderColor: color } : undefined}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                <span className="text-[13px] font-bold flex-1 text-foreground">{item.label}</span>
+                {cnt > 0 && <span className="text-[10px] text-muted-foreground">{cnt.toLocaleString('pt-BR')}</span>}
               </div>
-            )}
 
-            {success && !isLoading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, padding: '6px 8px', borderRadius: 8, background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
-                <CheckCircle size={13} style={{ color, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, color, fontWeight: 600 }}>Importado com sucesso!</span>
-              </div>
-            )}
+              {error && (
+                <div className="flex items-start gap-1.5 mb-2 px-2 py-1.5 rounded-lg bg-destructive/10">
+                  <AlertCircle size={13} className="text-destructive shrink-0 mt-0.5" />
+                  <span className="text-[11px] text-destructive leading-snug">{error}</span>
+                </div>
+              )}
 
-            <button
-              onClick={() => handleDownload(item)}
-              disabled={isLoading}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '8px 12px', borderRadius: 10, border: 'none', cursor: isLoading ? 'default' : 'pointer',
-                background: isLoading ? 'var(--ml-surface-container)' : color,
-                color: isLoading ? 'var(--ml-on-surface-variant)' : '#fff',
-                fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-                opacity: isLoading ? 0.7 : 1, transition: 'all 0.2s',
-              }}
-            >
-              {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              {isLoading ? 'Baixando e importando...' : 'Baixar e importar'}
-            </button>
-          </div>
+              {success && !isLoading && (
+                <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 rounded-lg" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
+                  <CheckCircle size={13} style={{ color }} className="shrink-0" />
+                  <span className="text-[11px] font-semibold" style={{ color }}>Importado com sucesso!</span>
+                </div>
+              )}
+
+              <Button
+                onClick={() => handleDownload(item)}
+                disabled={isLoading}
+                className="w-full gap-1.5"
+                style={!isLoading ? { background: color } : undefined}
+                variant={isLoading ? 'secondary' : 'default'}
+              >
+                {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {isLoading ? 'Baixando e importando...' : 'Baixar e importar'}
+              </Button>
+            </CardContent>
+          </Card>
         )
       })}
     </div>

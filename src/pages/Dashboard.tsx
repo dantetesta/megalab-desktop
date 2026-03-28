@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import { useAppStore } from '../stores/appStore'
-import { useLotteryStore } from '../stores/lotteryStore'
-import LotteryTabs from '../components/LotteryTabs'
-import NumberBall from '../components/NumberBall'
-import HeatMap from '../components/HeatMap'
-import { api, type DynamicDashboardStats, type SpecialFieldStat } from '../lib/tauri'
+import { useAppStore } from '@/stores/appStore'
+import { useLotteryStore } from '@/stores/lotteryStore'
+import LotteryTabs from '@/components/LotteryTabs'
+import NumberBall from '@/components/NumberBall'
+import HeatMap from '@/components/HeatMap'
+import { api, type DynamicDashboardStats, type SpecialFieldStat } from '@/lib/tauri'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts'
 import { Database, RefreshCw, Dices, Search, FolderHeart, Loader2, Download, Upload } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+
 
 const PERIOD_OPTIONS = [
   { label: 'Todos', value: null },
-  { label: 'Últimos 10', value: 10 },
-  { label: 'Últimos 20', value: 20 },
-  { label: 'Últimos 50', value: 50 },
-  { label: 'Últimos 100', value: 100 },
-  { label: 'Últimos 500', value: 500 },
-  { label: 'Últimos 1000', value: 1000 },
+  { label: 'Ultimos 10', value: 10 },
+  { label: 'Ultimos 20', value: 20 },
+  { label: 'Ultimos 50', value: 50 },
+  { label: 'Ultimos 100', value: 100 },
+  { label: 'Ultimos 500', value: 500 },
+  { label: 'Ultimos 1000', value: 1000 },
 ]
 
 interface DashboardProps {
@@ -40,36 +44,22 @@ export default function Dashboard({ }: DashboardProps) {
     if (dashboard && !dashboard.db_is_empty) {
       setLoadingStats(true)
       api.getDynamicDashboardStats(period, activeGame).then(setDstats).catch(() => {}).finally(() => setLoadingStats(false))
-      // Load special field stats for Timemania/Dia de Sorte
       if (activeGame === 'timemania' || activeGame === 'diadesorte') {
         api.getSpecialFieldStats(activeGame, period).then(setSpecialStats).catch(() => setSpecialStats([]))
-      } else {
-        setSpecialStats([])
-      }
-      // Load trevo stats for +Milionária
+      } else { setSpecialStats([]) }
       if (activeGame === 'maismilionaria') {
         api.getTrevoStats(period).then(setTrevoStats).catch(() => setTrevoStats([]))
-      } else {
-        setTrevoStats([])
-      }
+      } else { setTrevoStats([]) }
     }
   }, [dashboard, period, activeGame])
 
-
-
-  // Sync ALL enabled games
   const handleSyncAll = async () => {
     setSyncingAll(true)
     try {
       const gameTypes = enabledGames.map(g => g.game_type)
       let completed = 0
       for (const gt of gameTypes) {
-        try {
-          await api.syncGame(gt)
-          completed++
-        } catch (e: any) {
-          console.warn(`Sync ${gt}:`, e)
-        }
+        try { await api.syncGame(gt); completed++ } catch (e: any) { console.warn(`Sync ${gt}:`, e) }
       }
       showToast(`${completed} loteria${completed > 1 ? 's' : ''} sincronizada${completed > 1 ? 's' : ''}!`, 'success')
       loadDashboard()
@@ -80,306 +70,333 @@ export default function Dashboard({ }: DashboardProps) {
   const handleExportSql = async () => { try { const s = await api.exportFullDatabaseSql(); const b = new Blob([s], { type: 'text/sql' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = `megalab_backup.sql`; a.click(); URL.revokeObjectURL(u); showToast('Exportado!', 'success') } catch (e: any) { showToast(e?.toString() || 'Erro', 'error') } }
   const handleImportSql = async (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; try { const r = await api.importDatabaseSql(await f.text()); showToast(r, 'success'); await loadDashboard() } catch (err: any) { showToast(err?.toString() || 'Erro', 'error') }; if (fileInputRef.current) fileInputRef.current.value = '' }
 
-  if (!dashboard) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Loader2 size={32} className="animate-spin" style={{ color: 'var(--ml-primary)' }} /></div>
+  if (!dashboard) return <div className="flex items-center justify-center h-full"><Loader2 size={32} className="animate-spin text-primary" /></div>
 
   const top10 = dstats ? [...dstats.number_data].sort((a, b) => b.frequency - a.frequency).slice(0, 10) : []
   const delayed10 = dstats ? [...dstats.number_data].sort((a, b) => b.delay - a.delay).slice(0, 10) : []
   const activeConfig = enabledGames.find(g => g.game_type === activeGame)
-
-  // Custom dark tooltip style for charts
-  const tooltipStyle = { background: '#1a2024', border: 'none', borderRadius: 10, fontSize: 12, color: '#e0e8ec', fontFamily: 'Manrope' }
+  const tooltipStyle = { background: '#1a2024', border: 'none', borderRadius: 10, fontSize: 12, color: '#e0e8ec', fontFamily: 'Inter' }
 
   return (
-    <div style={{ height: '100%', overflow: 'auto', padding: '28px 36px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="h-full overflow-auto px-9 py-7 flex flex-col gap-5">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="flex justify-between items-center">
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.5px' }}>Início</h2>
-          <p style={{ fontSize: 13, color: 'var(--ml-on-surface-variant)', marginTop: 2 }}>Visão geral do seu LotoLab</p>
+          <h2 className="text-[1.4rem] font-bold tracking-tight">Inicio</h2>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Visao geral do seu LotoLab</p>
         </div>
         {!dashboard.db_is_empty && (
-          <button className="btn-primary" style={{ fontSize: 11, padding: '8px 16px' }} onClick={handleSyncAll} disabled={syncingAll}>
+          <Button size="sm" onClick={handleSyncAll} disabled={syncingAll} className="gap-1.5">
             {syncingAll ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Sincronizar todas
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Lottery tabs */}
-      {enabledGames.length > 0 && (
-        <LotteryTabs games={enabledGames} activeGame={activeGame} onSelect={setActiveGame} />
-      )}
+      {enabledGames.length > 0 && <LotteryTabs games={enabledGames} activeGame={activeGame} onSelect={setActiveGame} />}
 
-      {/* Sync progress (when syncing via button) */}
+      {/* Sync progress */}
       {syncingAll && (
-        <div style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--ml-primary) 10%, var(--ml-surface-low)), var(--ml-surface-low))', borderRadius: 14, padding: 16, border: '1px solid color-mix(in srgb, var(--ml-primary) 20%, transparent)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Loader2 size={16} className="animate-spin" style={{ color: 'var(--ml-primary)' }} />
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Sincronizando loterias habilitadas...</span>
-          </div>
-        </div>
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/10 to-card">
+          <CardContent className="p-4 flex items-center gap-2.5">
+            <Loader2 size={16} className="animate-spin text-primary" />
+            <span className="text-[13px] font-semibold">Sincronizando loterias habilitadas...</span>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Empty state - direct to Settings or restore backup */}
+      {/* Empty state */}
       {dashboard.db_is_empty && (
-        <div style={{ background: 'var(--ml-surface-low)', borderRadius: 16, padding: '48px 40px', textAlign: 'center' }}>
-          <Database size={40} style={{ color: 'var(--ml-primary)', margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Bem-vindo ao LotoLab!</h3>
-          <p style={{ color: 'var(--ml-on-surface-variant)', maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Para começar, importe a base de dados em <strong>Configurações</strong> ou restaure um backup existente.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button className="btn-primary" onClick={() => setCurrentPage('settings')} style={{ fontSize: 14, padding: '14px 24px' }}>
-              <Database size={16} /> Ir para Configurações
-            </button>
-            <button className="btn-ghost" onClick={() => fileInputRef.current?.click()} style={{ fontSize: 14, padding: '14px 24px' }}>
-              <Upload size={16} /> Restaurar Backup
-            </button>
-          </div>
-          <input ref={fileInputRef} type="file" accept=".sql" onChange={handleImportSql} style={{ display: 'none' }} />
-        </div>
+        <Card className="py-12 px-10 text-center">
+          <CardContent className="flex flex-col items-center p-0">
+            <Database size={40} className="text-primary mb-4" />
+            <h3 className="text-xl font-bold mb-2.5">Bem-vindo ao LotoLab!</h3>
+            <p className="text-muted-foreground max-w-[440px] mb-6 leading-relaxed">
+              Para comecar, importe a base de dados em <strong>Configuracoes</strong> ou restaure um backup existente.
+            </p>
+            <div className="flex gap-3">
+              <Button onClick={() => setCurrentPage('settings')} className="gap-2">
+                <Database size={16} /> Ir para Configuracoes
+              </Button>
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2">
+                <Upload size={16} /> Restaurar Backup
+              </Button>
+            </div>
+            <input ref={fileInputRef} type="file" accept=".sql" onChange={handleImportSql} className="hidden" />
+          </CardContent>
+        </Card>
       )}
 
       {!dashboard.db_is_empty && (
         <>
           {/* Quick actions */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <div className="grid grid-cols-3 gap-2.5">
             {[
-              { id: 'gerador', icon: Dices, label: 'Gerar Jogo', color: 'var(--ml-primary)' },
-              { id: 'concursos', icon: Search, label: 'Consultar Concursos', color: 'var(--ml-info)' },
-              { id: 'meus_jogos', icon: FolderHeart, label: 'Meus Jogos', color: 'var(--ml-secondary)' },
+              { id: 'gerador', icon: Dices, label: 'Gerar Jogo', color: 'var(--primary)' },
+              { id: 'concursos', icon: Search, label: 'Consultar Concursos', color: '#5b9bd5' },
+              { id: 'meus_jogos', icon: FolderHeart, label: 'Meus Jogos', color: 'var(--secondary)' },
             ].map(item => (
-              <button key={item.id} onClick={() => setCurrentPage(item.id)} style={{ background: 'var(--ml-surface-low)', borderRadius: 14, padding: '16px 18px', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, transition: 'transform 0.15s' }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb, ${item.color} 15%, transparent)`, flexShrink: 0 }}>
+              <button
+                key={item.id}
+                onClick={() => setCurrentPage(item.id)}
+                className="bg-card rounded-xl px-4 py-4 border-none cursor-pointer flex items-center gap-3 min-h-[56px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <div
+                  className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center shrink-0"
+                  style={{ background: `color-mix(in srgb, ${item.color} 15%, transparent)` }}
+                >
                   <item.icon size={18} style={{ color: item.color }} />
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ml-on-surface)' }}>{item.label}</span>
+                <span className="text-sm font-bold text-foreground">{item.label}</span>
               </button>
             ))}
           </div>
 
-          {/* Period filter + stats summary */}
-          <div style={{ background: 'var(--ml-surface-low)', borderRadius: 14, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ml-on-surface-variant)' }}>
-                Estatísticas — {activeConfig?.display_name || ''}
-              </p>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {PERIOD_OPTIONS.map(p => (
-                  <button key={p.label} onClick={() => setPeriod(p.value)} style={{
-                    padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
-                    background: period === p.value ? 'color-mix(in srgb, var(--ml-primary) 15%, transparent)' : 'var(--ml-surface-high)',
-                    color: period === p.value ? 'var(--ml-primary)' : 'var(--ml-on-surface-variant)',
-                    transition: 'all 0.15s',
-                  }}>{p.label}</button>
-                ))}
+          {/* Period filter + stats */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Estatisticas - {activeConfig?.display_name || ''}
+                </p>
+                <div className="flex gap-1 flex-wrap">
+                  {PERIOD_OPTIONS.map(p => (
+                    <button
+                      key={p.label}
+                      onClick={() => setPeriod(p.value)}
+                      className={cn(
+                        'px-2.5 py-1 rounded-lg border-none cursor-pointer text-[11px] font-semibold transition-all',
+                        period === p.value ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
+                      )}
+                    >{p.label}</button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {loadingStats && <div style={{ textAlign: 'center', padding: 20 }}><Loader2 size={20} className="animate-spin" style={{ color: 'var(--ml-primary)' }} /></div>}
+              {loadingStats && <div className="text-center py-5"><Loader2 size={20} className="animate-spin text-primary mx-auto" /></div>}
 
-            {dstats && !loadingStats && (
-              <>
-                {/* Summary cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
-                  <MiniCard label="Intervalo" value={`#${dstats.first_contest} ao #${dstats.last_contest}`} />
-                  <MiniCard label="Total de Sorteios" value={String(dstats.contest_count)} accent />
-                  <MiniCard label="Média da Soma" value={dstats.avg_sum.toFixed(1)} />
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ml-on-surface-variant)', marginBottom: 6 }}>Paridade</p>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--ml-primary)' }}>{dstats.even_pct.toFixed(1)}%</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--ml-secondary)' }}>{dstats.odd_pct.toFixed(1)}%</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 12, fontSize: 9, color: 'var(--ml-on-surface-variant)' }}>
-                      <span>Pares</span><span>Ímpares</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Top frequent + delayed as balls */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 16 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-primary)', marginBottom: 10 }}>Mais Frequentes</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {top10.map(d => (
-                        <div key={d.number} style={{ textAlign: 'center' }}>
-                          <NumberBall number={d.number} size="md" />
-                          <p style={{ fontSize: 9, color: 'var(--ml-on-surface-variant)', marginTop: 2, fontWeight: 600 }}>{d.frequency}x</p>
+              {dstats && !loadingStats && (
+                <>
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-4 gap-2.5 mb-5">
+                    <MiniCard label="Intervalo" value={`#${dstats.first_contest} ao #${dstats.last_contest}`} />
+                    <MiniCard label="Total de Sorteios" value={String(dstats.contest_count)} accent />
+                    <MiniCard label="Media da Soma" value={dstats.avg_sum.toFixed(1)} />
+                    <Card>
+                      <CardContent className="p-3.5 text-center">
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">Paridade</p>
+                        <div className="flex justify-center gap-3">
+                          <span className="text-base font-extrabold text-primary">{dstats.even_pct.toFixed(1)}%</span>
+                          <span className="text-base font-extrabold text-secondary">{dstats.odd_pct.toFixed(1)}%</span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 16 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-secondary)', marginBottom: 10 }}>Mais Atrasados</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {delayed10.map(d => (
-                        <div key={d.number} style={{ textAlign: 'center' }}>
-                          <NumberBall number={d.number} size="md" variant="gold" />
-                          <p style={{ fontSize: 9, color: 'var(--ml-on-surface-variant)', marginTop: 2, fontWeight: 600 }}>{d.delay} conc.</p>
+                        <div className="flex justify-center gap-3 text-[9px] text-muted-foreground">
+                          <span>Pares</span><span>Impares</span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Heat Map + Special Stats side by side */}
-                <div style={{ display: 'grid', gridTemplateColumns: (specialStats.length > 0 || trevoStats.length > 0) ? '1fr 1fr' : '1fr', gap: 16, marginBottom: 20 }}>
-                  <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ml-on-surface-variant)', marginBottom: 10 }}>Mapa de Calor — Volante</p>
-                    <HeatMap data={dstats.number_data} highlighted={dashboard.last_contest_numbers || []} />
+                      </CardContent>
+                    </Card>
                   </div>
 
-                  {/* Special field stats: Time do Coração / Mês da Sorte */}
-                  {specialStats.length > 0 && (
+                  {/* Top frequent + delayed */}
+                  <div className="grid grid-cols-2 gap-2.5 mb-5">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-[11px] font-bold text-primary mb-2.5">Mais Frequentes</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {top10.map(d => (
+                            <div key={d.number} className="text-center">
+                              <NumberBall number={d.number} size="md" />
+                              <p className="text-[9px] text-muted-foreground mt-0.5 font-semibold">{d.frequency}x</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-[11px] font-bold text-secondary mb-2.5">Mais Atrasados</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {delayed10.map(d => (
+                            <div key={d.number} className="text-center">
+                              <NumberBall number={d.number} size="md" variant="gold" />
+                              <p className="text-[9px] text-muted-foreground mt-0.5 font-semibold">{d.delay} conc.</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Heat Map + Special Stats */}
+                  <div className={cn('grid gap-4 mb-5', (specialStats.length > 0 || trevoStats.length > 0) ? 'grid-cols-2' : 'grid-cols-1')}>
                     <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ml-on-surface-variant)', marginBottom: 12 }}>
-                        {activeGame === 'timemania' ? '💚 Times do Coração — Frequência' : '📅 Meses da Sorte — Frequência'}
-                      </p>
-                      <div style={{ background: 'var(--ml-surface-container)', borderRadius: 14, padding: 16 }}>
-                        <ResponsiveContainer width="100%" height={Math.max(200, specialStats.slice(0, 20).length * 28)}>
-                          <BarChart data={specialStats.slice(0, 20)} layout="vertical" barCategoryGap="15%">
-                            <XAxis type="number" tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis type="category" dataKey="label" width={activeGame === 'timemania' ? 140 : 90} tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Mapa de Calor - Volante</p>
+                      <HeatMap data={dstats.number_data} highlighted={dashboard.last_contest_numbers || []} />
+                    </div>
+
+                    {specialStats.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                          {activeGame === 'timemania' ? 'Times do Coracao - Frequencia' : 'Meses da Sorte - Frequencia'}
+                        </p>
+                        <Card>
+                          <CardContent className="p-4">
+                            <ResponsiveContainer width="100%" height={Math.max(200, specialStats.slice(0, 20).length * 28)}>
+                              <BarChart data={specialStats.slice(0, 20)} layout="vertical" barCategoryGap="15%">
+                                <XAxis type="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <YAxis type="category" dataKey="label" width={activeGame === 'timemania' ? 140 : 90} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={tooltipStyle} />
+                                <Bar dataKey="count" radius={[0, 6, 6, 0]} fill={activeConfig?.color || 'var(--primary)'}>
+                                  {specialStats.slice(0, 20).map((_, i) => (
+                                    <Cell key={i} fill={i === 0 ? 'var(--secondary)' : i < 3 ? activeConfig?.color || 'var(--primary)' : 'var(--muted)'} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                            <p className="text-[10px] text-muted-foreground mt-2 text-center">
+                              {specialStats.length} {activeGame === 'timemania' ? 'times' : 'meses'} encontrados - Top 20
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+
+                    {trevoStats.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Trevos - Frequencia</p>
+                        <Card>
+                          <CardContent className="p-4">
+                            <ResponsiveContainer width="100%" height={Math.max(160, trevoStats.length * 32)}>
+                              <BarChart data={trevoStats} layout="vertical" barCategoryGap="20%">
+                                <XAxis type="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <YAxis type="category" dataKey="label" width={80} tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={tooltipStyle} />
+                                <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                                  {trevoStats.map((_, i) => (
+                                    <Cell key={i} fill={i === 0 ? '#f59e0b' : i < 3 ? '#d97706' : 'var(--muted)'} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                            <p className="text-[10px] text-muted-foreground mt-2 text-center">{trevoStats.length} trevos encontrados</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Charts: Frequency + Delay */}
+                  <div className="grid grid-cols-2 gap-2.5 mb-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-2.5">Frequencia dos Numeros</p>
+                        <ResponsiveContainer width="100%" height={160}>
+                          <BarChart data={dstats.number_data}>
+                            <XAxis dataKey="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 8 }} axisLine={false} tickLine={false} interval={4} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
                             <Tooltip contentStyle={tooltipStyle} />
-                            <Bar dataKey="count" radius={[0, 6, 6, 0]} fill={activeConfig?.color || 'var(--ml-primary)'}>
-                              {specialStats.slice(0, 20).map((_, i) => (
-                                <Cell key={i} fill={i === 0 ? 'var(--ml-secondary)' : i < 3 ? activeConfig?.color || 'var(--ml-primary)' : 'var(--ml-surface-highest)'} />
-                              ))}
+                            <Bar dataKey="frequency" radius={[2, 2, 0, 0]} fill={activeConfig?.color || 'var(--primary)'} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-2.5">Atraso dos Numeros</p>
+                        <ResponsiveContainer width="100%" height={160}>
+                          <BarChart data={dstats.number_data}>
+                            <XAxis dataKey="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 8 }} axisLine={false} tickLine={false} interval={4} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
+                            <Tooltip contentStyle={tooltipStyle} />
+                            <Bar dataKey="delay" radius={[2, 2, 0, 0]} fill="var(--secondary)" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Charts row 2 */}
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <Card>
+                      <CardContent className="p-4 text-center">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-1.5">Paridade</p>
+                        <ResponsiveContainer width="100%" height={130}>
+                          <PieChart>
+                            <Pie data={[{ name: 'Pares', value: dstats.even_pct }, { name: 'Impares', value: dstats.odd_pct }]} cx="50%" cy="50%" innerRadius={30} outerRadius={50} dataKey="value" stroke="none">
+                              <Cell fill="var(--primary)" />
+                              <Cell fill="var(--secondary)" />
+                            </Pie>
+                            <Tooltip contentStyle={tooltipStyle} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="flex justify-center gap-3.5 text-[10px] text-muted-foreground">
+                          <span><span className="text-primary font-bold">&#9679;</span> Pares</span>
+                          <span><span className="text-secondary font-bold">&#9679;</span> Impares</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-2.5">Distribuicao por Dezenas</p>
+                        <ResponsiveContainer width="100%" height={140}>
+                          <BarChart data={dstats.range_distribution}>
+                            <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
+                            <Tooltip contentStyle={tooltipStyle} />
+                            <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                              {dstats.range_distribution.map((_, i) => <Cell key={i} fill={['#6edba6', '#30a373', '#7ec8e3', '#e9c349', '#f0a040', '#e06030'][i]} />)}
                             </Bar>
                           </BarChart>
                         </ResponsiveContainer>
-                        <p style={{ fontSize: 10, color: 'var(--ml-on-surface-variant)', marginTop: 8, textAlign: 'center' }}>
-                          {specialStats.length} {activeGame === 'timemania' ? 'times' : 'meses'} encontrados · Top 20
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Trevo stats (+Milionária) */}
-                  {trevoStats.length > 0 && (
-                    <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ml-on-surface-variant)', marginBottom: 12 }}>
-                        🍀 Trevos — Frequência
-                      </p>
-                      <div style={{ background: 'var(--ml-surface-container)', borderRadius: 14, padding: 16 }}>
-                        <ResponsiveContainer width="100%" height={Math.max(160, trevoStats.length * 32)}>
-                          <BarChart data={trevoStats} layout="vertical" barCategoryGap="20%">
-                            <XAxis type="number" tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis type="category" dataKey="label" width={80} tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-2.5">Soma dos Numeros</p>
+                        <ResponsiveContainer width="100%" height={140}>
+                          <BarChart data={dstats.sum_distribution}>
+                            <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 8 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
                             <Tooltip contentStyle={tooltipStyle} />
-                            <Bar dataKey="count" radius={[0, 6, 6, 0]}>
-                              {trevoStats.map((_, i) => (
-                                <Cell key={i} fill={i === 0 ? '#f59e0b' : i < 3 ? '#d97706' : 'var(--ml-surface-highest)'} />
-                              ))}
-                            </Bar>
+                            <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#5b9bd5" />
                           </BarChart>
                         </ResponsiveContainer>
-                        <p style={{ fontSize: 10, color: 'var(--ml-on-surface-variant)', marginTop: 8, textAlign: 'center' }}>
-                          {trevoStats.length} trevos encontrados
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Charts: Frequency + Delay */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 16 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-on-surface-variant)', marginBottom: 10 }}>Frequência dos Números</p>
-                    <ResponsiveContainer width="100%" height={160}>
-                      <BarChart data={dstats.number_data}>
-                        <XAxis dataKey="number" tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 8 }} axisLine={false} tickLine={false} interval={4} />
-                        <YAxis tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
-                        <Tooltip contentStyle={tooltipStyle} />
-                        <Bar dataKey="frequency" radius={[2, 2, 0, 0]} fill={activeConfig?.color || 'var(--ml-primary)'} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 16 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-on-surface-variant)', marginBottom: 10 }}>Atraso dos Números</p>
-                    <ResponsiveContainer width="100%" height={160}>
-                      <BarChart data={dstats.number_data}>
-                        <XAxis dataKey="number" tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 8 }} axisLine={false} tickLine={false} interval={4} />
-                        <YAxis tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
-                        <Tooltip contentStyle={tooltipStyle} />
-                        <Bar dataKey="delay" radius={[2, 2, 0, 0]} fill="var(--ml-secondary)" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Charts row 2: Paridade pie + Range dist + Sum dist */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 16, textAlign: 'center' }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-on-surface-variant)', marginBottom: 6 }}>Paridade</p>
-                    <ResponsiveContainer width="100%" height={130}>
-                      <PieChart>
-                        <Pie data={[{ name: 'Pares', value: dstats.even_pct }, { name: 'Ímpares', value: dstats.odd_pct }]} cx="50%" cy="50%" innerRadius={30} outerRadius={50} dataKey="value" stroke="none">
-                          <Cell fill="var(--ml-primary)" />
-                          <Cell fill="var(--ml-secondary)" />
-                        </Pie>
-                        <Tooltip contentStyle={tooltipStyle} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 14, fontSize: 10, color: 'var(--ml-on-surface-variant)' }}>
-                      <span><span style={{ color: 'var(--ml-primary)', fontWeight: 700 }}>●</span> Pares</span>
-                      <span><span style={{ color: 'var(--ml-secondary)', fontWeight: 700 }}>●</span> Ímpares</span>
-                    </div>
-                  </div>
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 16 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-on-surface-variant)', marginBottom: 10 }}>Distribuição por Dezenas</p>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={dstats.range_distribution}>
-                        <XAxis dataKey="label" tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 9 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
-                        <Tooltip contentStyle={tooltipStyle} />
-                        <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                          {dstats.range_distribution.map((_, i) => <Cell key={i} fill={['#6edba6', '#30a373', '#7ec8e3', '#e9c349', '#f0a040', '#e06030'][i]} />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: 16 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--ml-on-surface-variant)', marginBottom: 10 }}>Soma dos Números</p>
-                    <ResponsiveContainer width="100%" height={140}>
-                      <BarChart data={dstats.sum_distribution}>
-                        <XAxis dataKey="label" tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 8 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: 'var(--ml-on-surface-variant)', fontSize: 9 }} axisLine={false} tickLine={false} width={30} />
-                        <Tooltip contentStyle={tooltipStyle} />
-                        <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="var(--ml-info)" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Backup */}
-          <div style={{ background: 'var(--ml-surface-low)', borderRadius: 14, padding: 18 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ml-on-surface)' }}>Backup completo</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn-ghost" style={{ fontSize: 11, padding: '6px 12px' }} onClick={handleExportSql}><Download size={12} /> Exportar SQL</button>
-                <button className="btn-ghost" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => fileInputRef.current?.click()}><Upload size={12} /> Importar SQL</button>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="text-[13px] font-bold text-foreground">Backup completo</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleExportSql} className="gap-1.5 text-[11px]"><Download size={12} /> Exportar SQL</Button>
+                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5 text-[11px]"><Upload size={12} /> Importar SQL</Button>
+                </div>
               </div>
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--ml-on-surface-variant)', margin: 0 }}>Inclui todos os concursos, jogos salvos, configurações e estatísticas</p>
-            <input ref={fileInputRef} type="file" accept=".sql" onChange={handleImportSql} style={{ display: 'none' }} />
-          </div>
+              <p className="text-[11px] text-muted-foreground">Inclui todos os concursos, jogos salvos, configuracoes e estatisticas</p>
+              <input ref={fileInputRef} type="file" accept=".sql" onChange={handleImportSql} className="hidden" />
+            </CardContent>
+          </Card>
         </>
       )}
 
-      <p style={{ fontSize: 9, textAlign: 'center', color: 'var(--ml-on-surface-variant)', opacity: 0.35, paddingBottom: 4 }}>Análises baseadas em histórico. Não garantem resultados.</p>
+      <p className="text-[9px] text-center text-muted-foreground/35 pb-1">Analises baseadas em historico. Nao garantem resultados.</p>
     </div>
   )
 }
 
 function MiniCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div style={{ background: 'var(--ml-surface-container)', borderRadius: 12, padding: '14px 16px' }}>
-      <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--ml-on-surface-variant)', marginBottom: 4 }}>{label}</p>
-      <p style={{ fontSize: accent ? 22 : 14, fontWeight: 800, color: accent ? 'var(--ml-primary)' : 'var(--ml-on-surface)' }}>{value}</p>
-    </div>
+    <Card>
+      <CardContent className="p-3.5">
+        <p className="text-[10px] font-semibold text-muted-foreground mb-1">{label}</p>
+        <p className={cn('font-extrabold', accent ? 'text-[22px] text-primary' : 'text-sm text-foreground')}>{value}</p>
+      </CardContent>
+    </Card>
   )
 }

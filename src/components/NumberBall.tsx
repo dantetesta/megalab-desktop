@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils'
+
 interface Props {
   number: number
   size?: 'sm' | 'md' | 'lg'
@@ -6,75 +8,33 @@ interface Props {
   delay?: number
 }
 
-export default function NumberBall({ number, size = 'md', variant = 'primary', animated = false, delay = 0 }: Props) {
-  const sizes = {
-    sm: { w: 32, h: 32, fs: 11, fw: 700 },
-    md: { w: 40, h: 40, fs: 14, fw: 700 },
-    lg: { w: 52, h: 52, fs: 17, fw: 800 },
-  }
+const sizeMap = {
+  sm: 'w-8 h-8 text-[11px]',
+  md: 'w-10 h-10 text-sm',
+  lg: 'w-[52px] h-[52px] text-[17px]',
+}
 
-  const s = sizes[size]
+export default function NumberBall({ number, size = 'md', variant = 'primary', animated = false, delay = 0 }: Props) {
   const anim = animated ? 'animate-ball-pop' : ''
   const style: React.CSSProperties = animated && delay > 0 ? { animationDelay: `${delay}ms`, animationFillMode: 'both' } : {}
 
-  const baseStyle: React.CSSProperties = {
-    ...style,
-    width: s.w, height: s.h, borderRadius: '50%',
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    fontFamily: "'Manrope', monospace", fontSize: s.fs, fontWeight: s.fw,
-    letterSpacing: '-0.3px', userSelect: 'none', cursor: 'default',
-    transition: 'transform 0.15s ease',
+  const variantClasses = {
+    primary: 'number-ball bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-[inset_0_3px_6px_rgba(255,255,255,0.35),inset_0_-3px_6px_rgba(0,0,0,0.2),0_3px_8px_rgba(0,0,0,0.25),0_1px_3px_rgba(0,0,0,0.15)]',
+    gold: 'number-ball bg-gradient-to-br from-secondary to-secondary/70 text-secondary-foreground shadow-[inset_0_3px_6px_rgba(255,255,255,0.25),inset_0_-3px_6px_rgba(0,0,0,0.2),0_3px_8px_rgba(0,0,0,0.2),0_1px_3px_rgba(0,0,0,0.1)]',
+    muted: 'number-ball bg-muted text-muted-foreground shadow-[inset_0_1px_3px_rgba(255,255,255,0.1),inset_0_-1px_3px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.1)]',
   }
 
-  if (variant === 'primary') {
-    return (
-      <span className={anim}
-        style={{
-          ...baseStyle,
-          background: 'linear-gradient(145deg, var(--ml-primary) 0%, var(--ml-primary-container) 100%)',
-          color: 'var(--ml-on-primary)',
-          boxShadow: `
-            inset 0 3px 6px rgba(255,255,255,0.35),
-            inset 0 -3px 6px rgba(0,0,0,0.2),
-            0 3px 8px rgba(0,0,0,0.25),
-            0 1px 3px rgba(0,0,0,0.15)
-          `,
-        }}>
-        {String(number).padStart(2, '0')}
-      </span>
-    )
-  }
-  if (variant === 'gold') {
-    return (
-      <span className={anim}
-        style={{
-          ...baseStyle,
-          background: 'linear-gradient(145deg, var(--ml-secondary), var(--ml-secondary-dim))',
-          color: '#fff',
-          boxShadow: `
-            inset 0 3px 6px rgba(255,255,255,0.25),
-            inset 0 -3px 6px rgba(0,0,0,0.2),
-            0 3px 8px rgba(0,0,0,0.2),
-            0 1px 3px rgba(0,0,0,0.1)
-          `,
-        }}>
-        {String(number).padStart(2, '0')}
-      </span>
-    )
-  }
-  // Muted
   return (
-    <span className={anim}
-      style={{
-        ...baseStyle,
-        background: 'var(--ml-surface-highest)',
-        color: 'var(--ml-on-surface-variant)',
-        boxShadow: `
-          inset 0 1px 3px rgba(255,255,255,0.1),
-          inset 0 -1px 3px rgba(0,0,0,0.08),
-          0 1px 3px rgba(0,0,0,0.1)
-        `,
-      }}>
+    <span
+      className={cn(
+        'inline-flex items-center justify-center rounded-full font-extrabold',
+        'font-[Manrope,monospace] tracking-tight select-none cursor-default transition-transform duration-150',
+        sizeMap[size],
+        variantClasses[variant],
+        anim,
+      )}
+      style={style}
+    >
       {String(number).padStart(2, '0')}
     </span>
   )

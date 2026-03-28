@@ -1,14 +1,18 @@
-import { Home, Search, Dices, FolderHeart, Award, Sun, Moon, Settings } from 'lucide-react'
-import { useAppStore } from '../stores/appStore'
-import { useThemeStore } from '../stores/themeStore'
+import { Home, Search, Cpu, Dices, MessageSquare, FolderHeart, Award, Sun, Moon, Settings } from 'lucide-react'
+import { useAppStore } from '@/stores/appStore'
+import { useThemeStore } from '@/stores/themeStore'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 const navItems = [
-  { id: 'dashboard', label: 'Início', icon: Home },
+  { id: 'dashboard', label: 'Inicio', icon: Home },
+  { id: 'lotocore', label: 'Gerador Pro', icon: Cpu },
   { id: 'concursos', label: 'Concursos', icon: Search },
   { id: 'gerador', label: 'Gerador', icon: Dices },
+  { id: 'assistente', label: 'Assistente IA', icon: MessageSquare },
   { id: 'meus_jogos', label: 'Meus Jogos', icon: FolderHeart },
-  { id: 'settings', label: 'Configurações', icon: Settings },
-  { id: 'creditos', label: 'Créditos', icon: Award },
+  { id: 'settings', label: 'Configuracoes', icon: Settings },
+  { id: 'creditos', label: 'Creditos', icon: Award },
 ]
 
 export default function Sidebar() {
@@ -16,26 +20,29 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useThemeStore()
 
   return (
-    <aside style={{ width: 240, height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--ml-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRight: '1px solid var(--ml-outline-variant)', zIndex: 10 }}>
-      {/* Logo only */}
-      <div style={{ padding: '14px 16px 8px', display: 'flex', justifyContent: 'center' }}>
-        <img src="/logo.png" alt="LotoLab" style={{ height: 132, objectFit: 'contain' }} />
+    <aside className="w-60 h-screen flex flex-col z-10 bg-card/90 backdrop-blur-xl border-r border-border">
+      {/* Logo */}
+      <div className="px-4 pt-3.5 pb-2 flex justify-center">
+        <img src="/logo.png" alt="LotoLab" className="h-[132px] object-contain" />
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <nav className="flex-1 px-2 py-1 flex flex-col gap-0.5">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = currentPage === item.id
           return (
-            <button key={item.id} onClick={() => { console.log(`📍 Navegando para: ${item.id}`); setCurrentPage(item.id) }} style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 11,
-              padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: isActive ? 600 : 500, fontFamily: 'inherit',
-              textAlign: 'left', minHeight: 42, transition: 'all 0.15s ease',
-              background: isActive ? 'var(--ml-surface-high)' : 'transparent',
-              color: isActive ? 'var(--ml-primary)' : 'var(--ml-on-surface-variant)',
-            }}>
+            <button
+              key={item.id}
+              onClick={() => { console.log(`Navegando para: ${item.id}`); setCurrentPage(item.id) }}
+              className={cn(
+                'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] border-none cursor-pointer',
+                'text-[13px] text-left min-h-[42px] transition-all duration-150 font-inherit',
+                isActive
+                  ? 'bg-accent font-semibold text-primary'
+                  : 'bg-transparent font-medium text-muted-foreground hover:bg-accent/50'
+              )}
+            >
               <Icon size={17} strokeWidth={isActive ? 2.5 : 2} />
               {item.label}
             </button>
@@ -44,17 +51,18 @@ export default function Sidebar() {
       </nav>
 
       {/* Theme + version */}
-      <div style={{ padding: '6px 8px 14px' }}>
-        <button onClick={toggleTheme} style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 9,
-          padding: '9px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-          fontSize: 12, fontWeight: 500, fontFamily: 'inherit', minHeight: 38,
-          background: 'var(--ml-surface-high)', color: 'var(--ml-on-surface-variant)',
-        }}>
-          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
-        </button>
-        <div style={{ fontSize: 9, padding: '6px 4px 0', color: 'var(--ml-on-surface-variant)', opacity: 0.4, fontWeight: 500 }}>LotoLab v3.8.0</div>
+      <div className="px-2 pb-3.5 pt-1.5">
+        <Button
+          variant="secondary"
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-2 justify-start text-xs font-medium min-h-[38px]"
+        >
+          {theme === '' ? <Sun size={15} /> : <Moon size={15} />}
+          {theme === '' ? 'Modo claro' : 'Modo escuro'}
+        </Button>
+        <div className="text-[9px] px-1 pt-1.5 text-muted-foreground/40 font-medium">
+          LotoLab v4.0.0
+        </div>
       </div>
     </aside>
   )

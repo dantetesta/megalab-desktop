@@ -1104,6 +1104,41 @@ fn ai_query_db(state: State<Arc<AppState>>, sql: String) -> Result<String, Strin
 }
 
 #[tauri::command]
+fn import_lunar_calendar(state: State<Arc<AppState>>, json_data: String) -> Result<String, String> {
+    #[derive(serde::Deserialize)]
+    struct LunarEntry {
+        data: String,
+        idade_lua: f64,
+        iluminacao: f64,
+        fase: String,
+    }
+
+    let entries: Vec<LunarEntry> = serde_json::from_str(&json_data)
+        .map_err(|e| format!("Erro ao parsear JSON lunar: {}", e))?;
+
+    let conn = state.db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM lunar_calendar", []).ok();
+
+    let mut count = 0i64;
+    for entry in &entries {
+        conn.execute(
+            "INSERT OR IGNORE INTO lunar_calendar (data, idade_lua, iluminacao, fase) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![entry.data, entry.idade_lua, entry.iluminacao, entry.fase]
+        ).ok();
+        count += 1;
+    }
+
+    Ok(format!("{} dias lunares importados com sucesso!", count))
+}
+
+#[tauri::command]
+fn get_lunar_calendar_count(state: State<Arc<AppState>>) -> Result<i64, String> {
+    let conn = state.db.conn.lock().map_err(|e| e.to_string())?;
+    conn.query_row("SELECT COUNT(*) FROM lunar_calendar", [], |r| r.get(0))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_ai_config(state: State<Arc<AppState>>) -> Result<Option<ai::AiConfig>, String> {
     let conn = state.db.conn.lock().map_err(|e| e.to_string())?;
     let result = conn.query_row(
@@ -1262,6 +1297,9 @@ pub fn run() {
             ai_query_db,
             get_ai_config,
             save_ai_config,
+            // Lunar Calendar
+            import_lunar_calendar,
+            get_lunar_calendar_count,
             // Data Management
             audit_storage,
             clear_cache,

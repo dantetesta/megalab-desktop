@@ -18,7 +18,8 @@ pub struct AiMessage {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AiResponse {
     pub message: String,
-    pub config_json: Option<String>, // parsed engine config if applicable
+    pub config_json: Option<String>,
+    pub sql_query: Option<String>, // SQL query the AI wants to execute
 }
 
 // ── Default system prompt (pt-BR) ──
@@ -46,16 +47,44 @@ Voce e um professor de estatistica simpatico, um estrategista de jogos lotérico
 - Quando nao entender o pedido, pergunte antes de assumir
 - Se o usuario for vago, sugira opcoes relacionadas
 - Use emojis com moderacao para tornar a conversa agradavel
+- Use formatacao Markdown: **negrito**, listas com - ou 1., tabelas quando mostrar dados tabulares
+- NUNCA mostre codigo JSON, SQL ou qualquer linguagem de programacao na resposta ao usuario. Blocos de codigo sao processados internamente pelo sistema — o usuario nao precisa ve-los.
+- Se precisar gerar uma configuracao para o motor, inclua o JSON em um bloco ```json``` mas NAO repita o conteudo do JSON em texto. Apenas explique o que voce configurou em linguagem simples.
+- Se precisar consultar o banco, inclua o SQL em um bloco ```sql``` mas NAO mencione a query ao usuario. Apenas diga que esta consultando os dados.
 
-## DADOS DO BANCO DISPONIVEIS
-Voce recebe dados do banco SQLite do LotoLab como contexto. O banco contem:
-- contests: todos os concursos (game_type, contest_number, contest_date, numbers_sorted_json, accumulated, estimated_next_prize)
-- number_stats: estatisticas por numero (historical_frequency, recent_frequency_30/60/100, current_delay, average_gap)
-- contest_derived_stats: analises por concurso (sum_total, even_count, odd_count, ranges, max_sequence_length, dispersion_score)
-- saved_games: jogos salvos pelo usuario
-- Loterias suportadas: megasena, lotofacil, quina, lotomania, maismilionaria, duplasena, timemania, diadesorte, supersete
+## ACESSO AO BANCO DE DADOS
+Voce tem acesso direto ao banco SQLite do LotoLab. Voce recebe automaticamente um resumo dos dados, mas pode pedir MAIS dados quando precisar.
 
-Quando receber dados com prefixo [DADOS DO BANCO], use-os como base factual para suas analises. Esses dados sao reais e atualizados.
+COMO PEDIR MAIS DADOS: Quando precisar consultar o banco, inclua um bloco SQL na sua resposta:
+```sql
+SELECT ... FROM ... WHERE ... LIMIT ...
+```
+O sistema vai executar a query e te devolver os resultados. Ai voce responde com base nos dados reais.
+
+TABELAS DISPONIVEIS:
+- contests (id, game_type TEXT, contest_number INTEGER, contest_date TEXT, numbers_sorted_json TEXT, numbers_sorted_text TEXT, accumulated INTEGER, estimated_next_prize REAL, amount_collected REAL, trevos_json TEXT, time_coracao TEXT, mes_sorte TEXT)
+- number_stats (game_type TEXT, number_value INTEGER, historical_frequency INTEGER, recent_frequency_30 INTEGER, recent_frequency_60 INTEGER, recent_frequency_100 INTEGER, current_delay INTEGER, average_gap REAL, gap_std_dev REAL)
+- contest_derived_stats (contest_id INTEGER, sum_total INTEGER, even_count INTEGER, odd_count INTEGER, range_01_10 INTEGER, range_11_20 INTEGER, range_21_30 INTEGER, range_31_40 INTEGER, range_41_50 INTEGER, range_51_60 INTEGER, max_sequence_length INTEGER, dispersion_score REAL)
+- contest_prizes (contest_id INTEGER, description TEXT, winners_count INTEGER, prize_value REAL)
+- saved_games (id, name TEXT, numbers_json TEXT, numbers_text TEXT, strategy_id TEXT, strategy_label TEXT, is_favorite INTEGER, is_bet INTEGER, game_type TEXT)
+- lunar_calendar (data TEXT PRIMARY KEY, idade_lua REAL, iluminacao REAL, fase TEXT) — calendario lunar de 1960 a 2050, com 33.238 dias. Fases: Lua Nova, Lua Crescente, Quarto Crescente, Gibosa Crescente, Lua Cheia, Gibosa Minguante, Quarto Minguante, Lua Minguante
+
+GAME TYPES: megasena, lotofacil, quina, lotomania, maismilionaria, duplasena, timemania, diadesorte, supersete
+
+EXEMPLOS DE QUERIES UTEIS COM CALENDARIO LUNAR:
+- Fase lunar de um concurso: SELECT c.contest_number, c.contest_date, l.fase, l.iluminacao FROM contests c JOIN lunar_calendar l ON c.contest_date = l.data WHERE c.game_type = 'megasena' ORDER BY c.contest_number DESC LIMIT 10
+- Contagem de sorteios por fase: SELECT l.fase, COUNT(*) as total FROM contests c JOIN lunar_calendar l ON c.contest_date = l.data WHERE c.game_type = 'megasena' GROUP BY l.fase ORDER BY total DESC
+- Numeros mais sorteados na Lua Cheia: Faca JOIN contests+lunar_calendar, filtre por fase, parse numbers_sorted_json e conte frequencias
+- Fase lunar de hoje: SELECT fase, iluminacao FROM lunar_calendar WHERE data = date('now')
+
+REGRAS DE SQL:
+- Apenas SELECT. Nada de INSERT/UPDATE/DELETE/DROP.
+- Sempre use LIMIT (max 100 linhas).
+- Use game_type = 'xxx' nos filtros.
+- numbers_sorted_json e um JSON array tipo "[1,5,12,30,45,55]"
+
+Quando receber dados com prefixo [DADOS DO BANCO], use-os como base factual. Esses dados sao reais.
+Quando receber dados com prefixo [RESULTADO DA QUERY], sao resultados da query SQL que voce pediu. Use para responder o usuario.
 
 ## CONFIGURACAO DO MOTOR (quando aplicavel)
 Se o usuario pedir para gerar jogos ou configurar filtros, retorne um bloco JSON:
@@ -152,10 +181,10 @@ pub fn build_db_context(db: &Database, game_type: &str) -> String {
         }
     }
 
-    // 4. Last 5 contest results
-    ctx.push_str("\nULTIMOS 5 CONCURSOS:\n");
+    // 4. Last 20 contest results
+    ctx.push_str("\nULTIMOS 20 CONCURSOS:\n");
     if let Ok(mut stmt) = conn.prepare(
-        "SELECT contest_number, contest_date, numbers_sorted_text, accumulated FROM contests WHERE game_type = ?1 ORDER BY contest_number DESC LIMIT 5"
+        "SELECT contest_number, contest_date, numbers_sorted_text, accumulated FROM contests WHERE game_type = ?1 ORDER BY contest_number DESC LIMIT 20"
     ) {
         if let Ok(rows) = stmt.query_map(rusqlite::params![game_type], |r| {
             Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, i32>(3)?))
@@ -185,6 +214,34 @@ pub fn build_db_context(db: &Database, game_type: &str) -> String {
     ).unwrap_or(0);
     if saved > 0 {
         ctx.push_str(&format!("\nJOGOS SALVOS DO USUARIO: {}\n", saved));
+    }
+
+    // 7. Lunar calendar info (if available)
+    let lunar_count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM lunar_calendar", [], |r| r.get(0)
+    ).unwrap_or(0);
+    if lunar_count > 0 {
+        ctx.push_str("\nCALENDARIO LUNAR: Disponivel (1960-2050).\n");
+        // Today's lunar phase
+        if let Ok(row) = conn.query_row(
+            "SELECT fase, iluminacao, idade_lua FROM lunar_calendar WHERE data = date('now')",
+            [], |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?, r.get::<_, f64>(2)?))
+        ) {
+            ctx.push_str(&format!("Fase lunar HOJE: {} (iluminacao: {:.1}%, idade: {:.1} dias)\n", row.0, row.1, row.2));
+        }
+        // Lunar phases of last 5 contests
+        ctx.push_str("Fases lunares dos ultimos 5 concursos:\n");
+        if let Ok(mut stmt) = conn.prepare(
+            "SELECT c.contest_number, c.contest_date, COALESCE(l.fase, '?') FROM contests c LEFT JOIN lunar_calendar l ON c.contest_date = l.data WHERE c.game_type = ?1 ORDER BY c.contest_number DESC LIMIT 5"
+        ) {
+            if let Ok(rows) = stmt.query_map(rusqlite::params![game_type], |r| {
+                Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
+            }) {
+                for row in rows.flatten() {
+                    ctx.push_str(&format!("  #{} ({}): {}\n", row.0, row.1, row.2));
+                }
+            }
+        }
     }
 
     ctx
@@ -385,7 +442,7 @@ async fn chat_openai(
         model,
         messages: api_messages,
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 2000,
     };
 
     let client = reqwest::Client::new();
@@ -480,7 +537,7 @@ async fn chat_gemini(
         }],
         generation_config: GeminiGenerationConfig {
             temperature: 0.7,
-            max_output_tokens: 1000,
+            max_output_tokens: 2000,
         },
     };
 
@@ -538,39 +595,84 @@ async fn chat_gemini(
 /// Looks for ```json ... ``` or a raw JSON object containing "strategy_id".
 fn parse_ai_content(content: &str) -> AiResponse {
     let trimmed = content.trim();
+    let mut config_json: Option<String> = None;
+    let mut sql_query: Option<String> = None;
+    let mut message = trimmed.to_string();
 
-    // Try to extract JSON from markdown code fences: ```json ... ```
+    // Extract SQL query from ```sql ... ``` blocks
+    if let Some(sql) = extract_sql_block(trimmed) {
+        let clean_sql = sql.trim().to_string();
+        if clean_sql.to_uppercase().starts_with("SELECT") {
+            sql_query = Some(clean_sql);
+            message = remove_code_block(trimmed, "sql");
+        }
+    }
+
+    // Extract JSON config from ```json ... ``` blocks
     if let Some(json_str) = extract_json_block(trimmed) {
         if is_engine_config(&json_str) {
-            // Remove the JSON block from the message text
-            let message = remove_json_block(trimmed);
-            return AiResponse {
-                message: message.trim().to_string(),
-                config_json: Some(json_str),
-            };
+            config_json = Some(json_str);
+            message = remove_code_block(&message, "json");
         }
     }
 
-    // Try to find a raw JSON object in the text that looks like engine config
-    if let Some(json_str) = extract_raw_json_object(trimmed) {
-        if is_engine_config(&json_str) {
-            let message = trimmed.replace(&json_str, "").trim().to_string();
-            return AiResponse {
-                message: if message.is_empty() {
-                    "Configuração gerada com sucesso.".to_string()
-                } else {
-                    message
-                },
-                config_json: Some(json_str),
-            };
+    // Try raw JSON object
+    if config_json.is_none() {
+        if let Some(json_str) = extract_raw_json_object(&message) {
+            if is_engine_config(&json_str) {
+                config_json = Some(json_str.clone());
+                message = message.replace(&json_str, "");
+            }
         }
     }
 
-    // No config found — return plain text response
+    let final_message = message.trim().to_string();
+
     AiResponse {
-        message: trimmed.to_string(),
-        config_json: None,
+        message: if final_message.is_empty() && config_json.is_some() {
+            "Configuracao gerada com sucesso.".to_string()
+        } else if final_message.is_empty() && sql_query.is_some() {
+            "Consultando dados...".to_string()
+        } else {
+            final_message
+        },
+        config_json,
+        sql_query,
     }
+}
+
+/// Extract content from ```sql ... ``` code fences.
+fn extract_sql_block(text: &str) -> Option<String> {
+    let markers = ["```sql", "```SQL"];
+    for marker in markers {
+        if let Some(start_idx) = text.find(marker) {
+            let content_start = start_idx + marker.len();
+            if let Some(end_idx) = text[content_start..].find("```") {
+                let sql = text[content_start..content_start + end_idx].trim().to_string();
+                if !sql.is_empty() {
+                    return Some(sql);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Remove a code block with a specific language marker from text.
+fn remove_code_block(text: &str, lang: &str) -> String {
+    let markers = [format!("```{}", lang), format!("```{}", lang.to_uppercase()), "```".to_string()];
+    let mut result = text.to_string();
+    for marker in &markers {
+        if let Some(start_idx) = result.find(marker.as_str()) {
+            let content_start = start_idx + marker.len();
+            if let Some(end_idx) = result[content_start..].find("```") {
+                let block_end = content_start + end_idx + 3;
+                result = format!("{}{}", &result[..start_idx], &result[block_end..]);
+                break;
+            }
+        }
+    }
+    result
 }
 
 /// Extract content from ```json ... ``` code fences.

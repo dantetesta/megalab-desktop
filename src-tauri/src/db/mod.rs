@@ -208,6 +208,18 @@ impl Database {
             );"
         ).ok();
 
+        // Lunar calendar table
+        conn_ref.execute_batch(
+            "CREATE TABLE IF NOT EXISTS lunar_calendar (
+                data TEXT PRIMARY KEY,
+                idade_lua REAL,
+                iluminacao REAL,
+                fase TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_lunar_fase ON lunar_calendar(fase);
+            CREATE INDEX IF NOT EXISTS idx_lunar_data ON lunar_calendar(data);"
+        ).ok();
+
         // Migration: Fix contest_number UNIQUE constraint to be per-game_type
         // Check if the old UNIQUE index exists on contest_number alone
         let needs_migration: bool = conn_ref.query_row(

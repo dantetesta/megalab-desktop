@@ -247,7 +247,7 @@ export default function LotoCore() {
   // ═══ Render ═══
 
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delay={300}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* ── Header ── */}
@@ -354,7 +354,7 @@ export default function LotoCore() {
                           </div>
                         </div>
                         <Tooltip>
-                          <TooltipTrigger asChild>
+                          <TooltipTrigger>
                             <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, flexShrink: 0 }}>
                               <Info size={12} style={{ color: 'var(--muted-foreground)', opacity: 0.6 }} />
                             </button>
@@ -402,7 +402,7 @@ export default function LotoCore() {
                       min={0}
                       max={1}
                       step={0.05}
-                      onValueChange={([v]) => updateWeight(key, v)}
+                      onValueChange={(v) => updateWeight(key, Array.isArray(v) ? v[0] : v)}
                     />
                   </div>
                 ))}
@@ -431,7 +431,7 @@ export default function LotoCore() {
                     min={1}
                     max={20}
                     step={1}
-                    onValueChange={([v]) => setNumGames(v)}
+                    onValueChange={(v) => setNumGames(Array.isArray(v) ? v[0] : v)}
                   />
                 </div>
 
@@ -446,14 +446,14 @@ export default function LotoCore() {
                     min={100}
                     max={2000}
                     step={100}
-                    onValueChange={([v]) => setSimulationDepth(v)}
+                    onValueChange={(v) => setSimulationDepth(Array.isArray(v) ? v[0] : v)}
                   />
                 </div>
 
                 {/* Mode */}
                 <div style={{ marginBottom: 12 }}>
                   <Label className="text-[11px] text-muted-foreground mb-1.5 block">Modo de geracao</Label>
-                  <Select value={mode} onValueChange={setMode}>
+                  <Select value={mode} onValueChange={(v) => { if (v) setMode(v) }}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
@@ -672,7 +672,7 @@ export default function LotoCore() {
                               {/* Actions */}
                               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                                 <Tooltip>
-                                  <TooltipTrigger asChild>
+                                  <TooltipTrigger>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleCopyGame(game) }}>
                                       <Copy size={14} />
                                     </Button>
@@ -680,7 +680,7 @@ export default function LotoCore() {
                                   <TooltipContent><p>Copiar</p></TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
-                                  <TooltipTrigger asChild>
+                                  <TooltipTrigger>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleSaveGame(game) }}>
                                       <Save size={14} />
                                     </Button>

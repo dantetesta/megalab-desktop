@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { api, type LotteryConfig } from '@/lib/tauri'
 import { useAppStore } from '@/stores/appStore'
 import { useLotteryStore } from '@/stores/lotteryStore'
@@ -176,6 +176,9 @@ export default function Settings() {
           {catalog.filter(c => enabledGames.includes(c.game_type)).map(l => <BetPriceEditor key={l.game_type} lottery={l} />)}
         </div>
 
+        {/* Lunar Calendar */}
+        <LunarCalendarSection />
+
         {/* Factory Reset */}
         <h2 className="text-[15px] font-bold mb-3.5 text-destructive">Zona perigosa</h2>
         <Card className="mb-8 border-destructive/20 bg-destructive/5">
@@ -187,7 +190,7 @@ export default function Settings() {
                 <p className="text-[11px] text-muted-foreground">Apaga TODOS os dados: concursos, jogos salvos, estatisticas e configuracoes. Acao irreversivel.</p>
               </div>
               <AlertDialog>
-                <AlertDialogTrigger asChild>
+                <AlertDialogTrigger>
                   <Button variant="outline" size="sm" className="text-destructive border-destructive gap-1.5">
                     <Trash2 size={14} /> Resetar sistema
                   </Button>
@@ -225,6 +228,72 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  )
+}
+
+/* Lunar Calendar Section */
+function LunarCalendarSection() {
+  const { showToast } = useAppStore()
+  const [lunarCount, setLunarCount] = useState(0)
+  const [importing, setImporting] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    api.getLunarCalendarCount().then(setLunarCount).catch(() => setLunarCount(0))
+  }, [])
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const text = await file.text()
+      const result = await api.importLunarCalendar(text)
+      showToast(result, 'success')
+      const count = await api.getLunarCalendarCount()
+      setLunarCount(count)
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : String(err), 'error')
+    } finally {
+      setImporting(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-[15px] font-bold mb-3.5">Calendario Lunar</h2>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-lg">
+              🌙
+            </div>
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold text-foreground">Base lunar 1960–2050</p>
+              <p className="text-[11px] text-muted-foreground">
+                {lunarCount > 0
+                  ? `${lunarCount.toLocaleString('pt-BR')} dias carregados. O Assistente IA pode cruzar fases lunares com sorteios.`
+                  : 'Importe o calendario lunar para o Assistente IA usar em analises de fases da lua.'}
+              </p>
+            </div>
+            <div>
+              <input ref={fileRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
+              <Button
+                variant={lunarCount > 0 ? 'outline' : 'default'}
+                size="sm"
+                disabled={importing}
+                onClick={() => fileRef.current?.click()}
+                className="gap-1.5"
+              >
+                {importing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {lunarCount > 0 ? 'Reimportar' : 'Importar JSON'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

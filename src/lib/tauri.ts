@@ -210,6 +210,10 @@ export const api = {
   getAiConfig: () => invoke<AiConfig | null>('get_ai_config'),
   saveAiConfig: (config: AiConfig) => invoke<void>('save_ai_config', { config }),
 
+  // ═══ Lunar Calendar ═══
+  importLunarCalendar: (jsonData: string) => invoke<string>('import_lunar_calendar', { jsonData }),
+  getLunarCalendarCount: () => invoke<number>('get_lunar_calendar_count'),
+
   // ═══ Data Management ═══
   auditStorage: () => invoke<StorageAudit>('audit_storage'),
   clearCache: () => invoke<CleanupResult>('clear_cache'),
@@ -330,6 +334,7 @@ export interface AiMessage {
 export interface AiResponse {
   message: string
   config_json: string | null
+  sql_query: string | null
 }
 
 // ═══ Data Management Types ═══

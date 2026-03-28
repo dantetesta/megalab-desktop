@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Markdown from 'react-markdown'
 import { api, type AiConfig, type AiMessage, type AiResponse } from '@/lib/tauri'
 import { useLotteryStore } from '@/stores/lotteryStore'
 import { cn } from '@/lib/utils'
@@ -185,7 +186,41 @@ export default function Assistente() {
     apiMessages.push({ role: 'user', content: text })
 
     try {
-      const response: AiResponse = await api.aiChat(config, apiMessages, activeGame)
+      let response: AiResponse = await api.aiChat(config, apiMessages, activeGame)
+
+      // If AI requested a SQL query, execute it and send results back
+      if (response.sql_query) {
+        try {
+          const queryResult = await api.aiQueryDb(response.sql_query)
+
+          // Show partial message if AI wrote something before the query
+          if (response.message && response.message !== 'Consultando dados...') {
+            setMessages((prev) => [...prev, {
+              id: uid(), role: 'assistant',
+              content: response.message + '\n\n_Consultando banco de dados..._',
+              timestamp: new Date(),
+            }])
+          }
+
+          // Send query results back to AI for analysis
+          const followUpMessages = [...apiMessages, {
+            role: 'assistant',
+            content: response.message || 'Vou consultar os dados.',
+          }, {
+            role: 'user',
+            content: `[RESULTADO DA QUERY]\n${queryResult}\n\nAgora responda minha pergunta original com base nesses dados. Nao inclua outro bloco SQL na resposta.`,
+          }]
+
+          response = await api.aiChat(config, followUpMessages, activeGame)
+        } catch (sqlErr) {
+          // SQL failed, show the original message + error
+          response = {
+            message: response.message + `\n\n_(Nao consegui consultar o banco: ${sqlErr})_`,
+            config_json: response.config_json,
+            sql_query: null,
+          }
+        }
+      }
 
       const assistantMessage: ChatMessage = {
         id: uid(),
@@ -246,7 +281,8 @@ export default function Assistente() {
 
   // ─── Provider change in draft ───
 
-  const handleProviderChange = useCallback((provider: string) => {
+  const handleProviderChange = useCallback((provider: string | null) => {
+    if (!provider) return
     const models = MODEL_OPTIONS[provider] || []
     setConfigDraft((prev) => ({
       ...prev,
@@ -296,7 +332,7 @@ export default function Assistente() {
           <div>
             <h1 className="text-sm font-bold text-foreground">Assistente IA</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <Badge variant={hasApiKey ? 'success' : 'outline'} className="text-[10px] px-1.5 py-0">
+              <Badge variant={hasApiKey ? 'default' : 'outline'} className="text-[10px] px-1.5 py-0">
                 {hasApiKey ? providerLabel : 'Nao configurado'}
               </Badge>
               {hasApiKey && (
@@ -309,7 +345,7 @@ export default function Assistente() {
         <div className="flex items-center gap-1">
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -326,8 +362,8 @@ export default function Assistente() {
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <DialogTrigger asChild>
+                <TooltipTrigger>
+                  <DialogTrigger>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -373,9 +409,9 @@ export default function Assistente() {
                   <Label>Modelo</Label>
                   <Select
                     value={configDraft.model}
-                    onValueChange={(model) =>
-                      setConfigDraft((prev) => ({ ...prev, model }))
-                    }
+                    onValueChange={(model) => {
+                      if (model) setConfigDraft((prev) => ({ ...prev, model }))
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o modelo" />
@@ -504,7 +540,7 @@ export default function Assistente() {
           />
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger>
                 <Button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading || !hasApiKey}
@@ -604,9 +640,9 @@ function MessageBubble({
       </div>
       <div className="space-y-2 min-w-0">
         <div className="group relative rounded-2xl rounded-tl-sm px-4 py-3 bg-card border border-border">
-          <p className="text-sm text-card-foreground whitespace-pre-wrap leading-relaxed">
-            {message.content}
-          </p>
+          <div className="text-sm text-card-foreground leading-relaxed prose prose-sm prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>ul]:pl-4 [&>ol]:pl-4 [&>li]:mb-0.5 [&>h1]:text-base [&>h1]:font-bold [&>h1]:mb-2 [&>h2]:text-sm [&>h2]:font-bold [&>h2]:mb-1.5 [&>h3]:text-sm [&>h3]:font-semibold [&>h3]:mb-1 [&>table]:text-xs [&>table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&>blockquote]:border-l-2 [&>blockquote]:border-primary [&>blockquote]:pl-3 [&>blockquote]:italic [&>blockquote]:text-muted-foreground [&_strong]:text-primary [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&>hr]:border-border [&>hr]:my-3">
+            <Markdown>{message.content}</Markdown>
+          </div>
           <div className="flex items-center justify-between mt-2">
             <p className="text-[10px] text-muted-foreground">
               {message.timestamp.toLocaleTimeString('pt-BR', {

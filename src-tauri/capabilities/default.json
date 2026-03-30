@@ -1,12 +1,18 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for MegaLab Desktop",
+  "description": "Default capabilities for LotoLab Core Engine",
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:app:default",
+    "core:path:default",
+    "core:resources:default",
     "clipboard-manager:default",
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-read-text"
-  ]
+  ],
+  "security": {
+    "csp": null
+  }
 }

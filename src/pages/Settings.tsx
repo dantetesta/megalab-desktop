@@ -110,7 +110,7 @@ export default function Settings() {
   )
 
   return (
-    <div className="h-full overflow-auto px-10 py-8">
+    <div>
       <div className="max-w-[820px] mx-auto">
         <h1 className="text-2xl font-extrabold mb-1 text-foreground">Configuracoes</h1>
         <p className="text-sm text-muted-foreground mb-7">Gerencie loterias, valores e dados.</p>
@@ -179,6 +179,9 @@ export default function Settings() {
         {/* Lunar Calendar */}
         <LunarCalendarSection />
 
+        {/* Cache Management */}
+        <CacheSection />
+
         {/* Factory Reset */}
         <h2 className="text-[15px] font-bold mb-3.5 text-destructive">Zona perigosa</h2>
         <Card className="mb-8 border-destructive/20 bg-destructive/5">
@@ -228,6 +231,51 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  )
+}
+
+/* Cache Management Section */
+function CacheSection() {
+  const { showToast } = useAppStore()
+  const [clearing, setClearing] = useState(false)
+
+  const handleClearAll = async () => {
+    setClearing(true)
+    try {
+      // Clear app cache (temp, cache, logs)
+      await api.clearCache()
+      await api.clearTemp()
+      // Force re-sync banners from server
+      await api.syncBanners()
+      showToast('Cache limpo! Anuncios e dados temporarios atualizados.', 'success')
+    } catch (e: unknown) {
+      showToast(String(e), 'error')
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-[15px] font-bold mb-3.5">Cache e dados temporarios</h2>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center shrink-0">
+              <RotateCcw size={18} className="text-muted-foreground" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold text-foreground">Limpar cache completo</p>
+              <p className="text-[11px] text-muted-foreground">Remove arquivos temporarios, cache e forca o download de novos anuncios do servidor.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleClearAll} disabled={clearing} className="gap-1.5 shrink-0">
+              {clearing ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+              Limpar cache
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -355,7 +403,7 @@ function LotteryCard({
           <div className={cn(
             'text-[11px] mb-2 font-semibold leading-snug',
             isError && 'text-destructive',
-            isDone && !isError && '',
+            isDone && !isError && 'lottery-text-on-tint',
             isPaused && 'text-amber-500',
             !isError && !isDone && !isPaused && 'text-muted-foreground',
           )} style={isDone && !isError ? { color: l.color } : undefined}>
@@ -387,7 +435,7 @@ function LotteryCard({
                 <Square size={12} /> Parar
               </Button>
             ) : isDone && gameState.missing === 0 ? (
-              <div className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold" style={{ background: `color-mix(in srgb, ${l.color} 12%, transparent)`, color: l.color }}>
+              <div className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold lottery-text-on-tint" style={{ background: `color-mix(in srgb, ${l.color} 12%, transparent)`, color: l.color }}>
                 <CheckCircle size={13} /> Atualizado
               </div>
             ) : isError ? (
@@ -396,7 +444,7 @@ function LotteryCard({
               </Button>
             ) : (
               <>
-                <Button size="sm" onClick={onSync} disabled={anyBusy} className="flex-1 gap-1.5" style={{ background: l.color }}>
+                <Button size="sm" onClick={onSync} disabled={anyBusy} className="flex-1 gap-1.5 lottery-btn" style={{ background: l.color }}>
                   <RefreshCw size={12} /> Sincronizar
                 </Button>
                 <Button variant="outline" size="sm" onClick={onCheck} disabled={anyBusy} title="Verificar status">
@@ -462,7 +510,7 @@ function BetPriceEditor({ lottery }: { lottery: LotteryConfig }) {
   }
 
   const picks = []; for (let i = lottery.min_pick_count; i <= lottery.max_pick_count; i++) picks.push(i)
-  const fmt = (v: number | null | undefined) => v && typeof v === 'number' ? `R$ ${v.toFixed(2).replace('.', ',')}` : '--'
+  const fmt = (v: number | null | undefined) => v && typeof v === 'number' ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '--'
 
   return (
     <Card>
@@ -571,15 +619,15 @@ function SqlImportList({ catalog, counts, onImported }: { catalog: LotteryConfig
 
               {success && !isLoading && (
                 <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 rounded-lg" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
-                  <CheckCircle size={13} style={{ color }} className="shrink-0" />
-                  <span className="text-[11px] font-semibold" style={{ color }}>Importado com sucesso!</span>
+                  <CheckCircle size={13} style={{ color }} className="shrink-0 lottery-text-on-tint" />
+                  <span className="text-[11px] font-semibold lottery-text-on-tint" style={{ color }}>Importado com sucesso!</span>
                 </div>
               )}
 
               <Button
                 onClick={() => handleDownload(item)}
                 disabled={isLoading}
-                className="w-full gap-1.5"
+                className={cn('w-full gap-1.5', !isLoading && 'lottery-btn')}
                 style={!isLoading ? { background: color } : undefined}
                 variant={isLoading ? 'secondary' : 'default'}
               >

@@ -804,7 +804,7 @@ impl Database {
     // ── Export/Import ──
     pub fn export_as_sql(&self) -> Result<String, String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        let mut sql = String::from("-- MegaLab Desktop Database Export\n-- Generated at: ");
+        let mut sql = String::from("-- LotoLab Core Engine Database Export\n-- Generated at: ");
         let now: String = conn.query_row("SELECT datetime('now')", [], |row| row.get(0)).unwrap_or_default();
         sql.push_str(&now);
         sql.push_str("\n\n");
@@ -941,6 +941,193 @@ impl Database {
             sql.push('\n');
         }
 
+        // Export contest_prizes
+        sql.push_str("\n-- Contest Prizes\n");
+        let mut prizes_stmt = conn.prepare(
+            "SELECT contest_id, description, range_number, winners_count, prize_value FROM contest_prizes"
+        ).map_err(|e| e.to_string())?;
+        let prize_rows: Vec<String> = prizes_stmt.query_map([], |row| {
+            let contest_id: i64 = row.get(0)?;
+            let desc: Option<String> = row.get(1)?;
+            let range_num: Option<i64> = row.get(2)?;
+            let winners: Option<i64> = row.get(3)?;
+            let prize_val: Option<f64> = row.get(4)?;
+            Ok(format!(
+                "INSERT OR REPLACE INTO contest_prizes (contest_id, description, range_number, winners_count, prize_value) VALUES ({}, {}, {}, {}, {});",
+                contest_id,
+                desc.map(|d| format!("'{}'", d.replace('\'', "''"))).unwrap_or("NULL".to_string()),
+                range_num.map(|n| n.to_string()).unwrap_or("NULL".to_string()),
+                winners.map(|w| w.to_string()).unwrap_or("NULL".to_string()),
+                prize_val.map(|p| p.to_string()).unwrap_or("NULL".to_string()),
+            ))
+        }).map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+        for row in prize_rows { sql.push_str(&row); sql.push('\n'); }
+
+        // Export contest_derived_stats
+        sql.push_str("\n-- Contest Derived Stats\n");
+        let mut ds_stmt = conn.prepare(
+            "SELECT contest_id, sum_total, even_count, odd_count, range_01_10, range_11_20, range_21_30, range_31_40, range_41_50, range_51_60, repeated_from_previous_count, has_sequence, max_sequence_length, dispersion_score, parity_signature, range_signature FROM contest_derived_stats"
+        ).map_err(|e| e.to_string())?;
+        let ds_rows: Vec<String> = ds_stmt.query_map([], |row| {
+            let cid: i64 = row.get(0)?;
+            let sum: Option<i64> = row.get(1)?;
+            let even: Option<i64> = row.get(2)?;
+            let odd: Option<i64> = row.get(3)?;
+            let r1: Option<i64> = row.get(4)?;
+            let r2: Option<i64> = row.get(5)?;
+            let r3: Option<i64> = row.get(6)?;
+            let r4: Option<i64> = row.get(7)?;
+            let r5: Option<i64> = row.get(8)?;
+            let r6: Option<i64> = row.get(9)?;
+            let rep: Option<i64> = row.get(10)?;
+            let has_seq: Option<i32> = row.get(11)?;
+            let max_seq: Option<i64> = row.get(12)?;
+            let disp: Option<f64> = row.get(13)?;
+            let parity_sig: Option<String> = row.get(14)?;
+            let range_sig: Option<String> = row.get(15)?;
+            Ok(format!(
+                "INSERT OR REPLACE INTO contest_derived_stats (contest_id, sum_total, even_count, odd_count, range_01_10, range_11_20, range_21_30, range_31_40, range_41_50, range_51_60, repeated_from_previous_count, has_sequence, max_sequence_length, dispersion_score, parity_signature, range_signature) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {});",
+                cid,
+                sum.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                even.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                odd.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r1.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r2.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r3.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r4.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r5.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r6.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                rep.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                has_seq.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                max_seq.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                disp.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                parity_sig.map(|s| format!("'{}'", s.replace('\'', "''"))).unwrap_or("NULL".to_string()),
+                range_sig.map(|s| format!("'{}'", s.replace('\'', "''"))).unwrap_or("NULL".to_string()),
+            ))
+        }).map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+        for row in ds_rows { sql.push_str(&row); sql.push('\n'); }
+
+        // Export number_stats
+        sql.push_str("\n-- Number Stats\n");
+        let mut ns_stmt = conn.prepare(
+            "SELECT game_type, number_value, historical_frequency, recent_frequency_30, recent_frequency_60, recent_frequency_100, current_delay, average_gap, gap_std_dev FROM number_stats"
+        ).map_err(|e| e.to_string())?;
+        let ns_rows: Vec<String> = ns_stmt.query_map([], |row| {
+            let gt: String = row.get(0)?;
+            let nv: i64 = row.get(1)?;
+            let hf: i64 = row.get(2)?;
+            let rf30: i64 = row.get(3)?;
+            let rf60: i64 = row.get(4)?;
+            let rf100: i64 = row.get(5)?;
+            let cd: i64 = row.get(6)?;
+            let ag: f64 = row.get(7)?;
+            let gsd: f64 = row.get(8)?;
+            Ok(format!(
+                "INSERT OR REPLACE INTO number_stats (game_type, number_value, historical_frequency, recent_frequency_30, recent_frequency_60, recent_frequency_100, current_delay, average_gap, gap_std_dev) VALUES ('{}', {}, {}, {}, {}, {}, {}, {}, {});",
+                gt.replace('\'', "''"), nv, hf, rf30, rf60, rf100, cd, ag, gsd,
+            ))
+        }).map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+        for row in ns_rows { sql.push_str(&row); sql.push('\n'); }
+
+        // Export saved_game_analysis
+        sql.push_str("\n-- Saved Game Analysis\n");
+        let mut sga_stmt = conn.prepare(
+            "SELECT saved_game_id, sum_total, even_count, odd_count, range_01_10, range_11_20, range_21_30, range_31_40, range_41_50, range_51_60, repeats_from_last_contest, historical_exact_match_count, historical_same_parity_signature_count, historical_same_range_signature_count, avg_frequency, avg_recent_frequency, avg_delay, affinity_score, dispersion_score, structural_score FROM saved_game_analysis"
+        ).map_err(|e| e.to_string())?;
+        let sga_rows: Vec<String> = sga_stmt.query_map([], |row| {
+            let sgid: i64 = row.get(0)?;
+            let sum: Option<i64> = row.get(1)?;
+            let even: Option<i64> = row.get(2)?;
+            let odd: Option<i64> = row.get(3)?;
+            let r1: Option<i64> = row.get(4)?;
+            let r2: Option<i64> = row.get(5)?;
+            let r3: Option<i64> = row.get(6)?;
+            let r4: Option<i64> = row.get(7)?;
+            let r5: Option<i64> = row.get(8)?;
+            let r6: Option<i64> = row.get(9)?;
+            let rep: Option<i64> = row.get(10)?;
+            let exact: Option<i64> = row.get(11)?;
+            let parity: Option<i64> = row.get(12)?;
+            let range_c: Option<i64> = row.get(13)?;
+            let avg_f: Option<f64> = row.get(14)?;
+            let avg_rf: Option<f64> = row.get(15)?;
+            let avg_d: Option<f64> = row.get(16)?;
+            let aff: Option<f64> = row.get(17)?;
+            let disp: Option<f64> = row.get(18)?;
+            let struc: Option<f64> = row.get(19)?;
+            Ok(format!(
+                "INSERT OR REPLACE INTO saved_game_analysis (saved_game_id, sum_total, even_count, odd_count, range_01_10, range_11_20, range_21_30, range_31_40, range_41_50, range_51_60, repeats_from_last_contest, historical_exact_match_count, historical_same_parity_signature_count, historical_same_range_signature_count, avg_frequency, avg_recent_frequency, avg_delay, affinity_score, dispersion_score, structural_score) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {});",
+                sgid,
+                sum.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                even.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                odd.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r1.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r2.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r3.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r4.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r5.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                r6.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                rep.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                exact.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                parity.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                range_c.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                avg_f.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                avg_rf.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                avg_d.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                aff.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                disp.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+                struc.map(|v| v.to_string()).unwrap_or("NULL".to_string()),
+            ))
+        }).map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+        for row in sga_rows { sql.push_str(&row); sql.push('\n'); }
+
+        // Export ai_config
+        sql.push_str("\n-- AI Config\n");
+        let mut ai_stmt = conn.prepare(
+            "SELECT provider, api_key, model FROM ai_config"
+        ).map_err(|e| e.to_string())?;
+        let ai_rows: Vec<String> = ai_stmt.query_map([], |row| {
+            let provider: String = row.get(0)?;
+            let api_key: String = row.get(1)?;
+            let model: String = row.get(2)?;
+            Ok(format!(
+                "INSERT OR REPLACE INTO ai_config (id, provider, api_key, model) VALUES (1, '{}', '{}', '{}');",
+                provider.replace('\'', "''"),
+                api_key.replace('\'', "''"),
+                model.replace('\'', "''"),
+            ))
+        }).map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+        for row in ai_rows { sql.push_str(&row); sql.push('\n'); }
+
+        // Export lunar_calendar
+        sql.push_str("\n-- Lunar Calendar\n");
+        let mut lunar_stmt = conn.prepare(
+            "SELECT data, idade_lua, iluminacao, fase FROM lunar_calendar"
+        ).map_err(|e| e.to_string())?;
+        let lunar_rows: Vec<String> = lunar_stmt.query_map([], |row| {
+            let data: String = row.get(0)?;
+            let idade: f64 = row.get(1)?;
+            let ilum: f64 = row.get(2)?;
+            let fase: String = row.get(3)?;
+            Ok(format!(
+                "INSERT OR REPLACE INTO lunar_calendar (data, idade_lua, iluminacao, fase) VALUES ('{}', {}, {}, '{}');",
+                data.replace('\'', "''"), idade, ilum, fase.replace('\'', "''"),
+            ))
+        }).map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+        for row in lunar_rows { sql.push_str(&row); sql.push('\n'); }
+
         // Update sync state per game type
         sql.push_str("\n-- Sync state per game type\n");
         let mut sync_stmt = conn.prepare("SELECT DISTINCT game_type FROM contests").map_err(|e| e.to_string())?;
@@ -956,12 +1143,50 @@ impl Database {
 
     pub fn import_from_sql(&self, sql: &str) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
-        // Pre-process: ensure contest inserts use INSERT OR IGNORE to prevent duplicates
-        let safe_sql = sql
-            .replace("INSERT INTO contests ", "INSERT OR IGNORE INTO contests ")
-            .replace("INSERT OR IGNORE OR IGNORE", "INSERT OR IGNORE");
-        conn.execute_batch(&safe_sql).map_err(|e| format!("Erro ao importar SQL: {}", e))?;
+
+        // Split into individual statements and execute each one independently.
+        // This avoids "cannot start a transaction within a transaction" errors
+        // caused by execute_batch when the SQL contains transaction commands.
+        for statement in sql.split(';') {
+            let stmt = statement.trim();
+            if stmt.is_empty() { continue; }
+            if stmt.starts_with("--") { continue; } // skip comments
+
+            // Skip transaction commands
+            let upper = stmt.to_uppercase();
+            if upper.starts_with("BEGIN") || upper.starts_with("COMMIT") || upper.starts_with("ROLLBACK") {
+                continue;
+            }
+
+            // Make contest inserts use INSERT OR IGNORE to prevent duplicates
+            let safe_stmt = if upper.contains("INSERT INTO CONTESTS ") {
+                stmt.replace("INSERT INTO contests ", "INSERT OR IGNORE INTO contests ")
+            } else {
+                stmt.to_string()
+            };
+
+            // Execute each statement independently, ignoring duplicate/conflict errors
+            conn.execute_batch(&format!("{};", safe_stmt)).ok();
+        }
+
         Ok(())
+    }
+
+    pub fn get_table_counts(&self) -> Result<Vec<(String, i64)>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let tables = vec![
+            "contests", "contest_prizes", "contest_derived_stats", "number_stats",
+            "saved_games", "saved_game_analysis", "sync_state", "games_catalog",
+            "bet_price_rules", "ai_config", "lunar_calendar", "sync_logs",
+        ];
+        let mut result = Vec::new();
+        for table in tables {
+            let count: i64 = conn.query_row(
+                &format!("SELECT COUNT(*) FROM {}", table), [], |row| row.get(0)
+            ).unwrap_or(0);
+            result.push((table.to_string(), count));
+        }
+        Ok(result)
     }
 
     // ── Derived Stats ──

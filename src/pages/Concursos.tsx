@@ -4,6 +4,7 @@ import { useAppStore } from '@/stores/appStore'
 import { useLotteryStore } from '@/stores/lotteryStore'
 import LotteryTabs from '@/components/LotteryTabs'
 import NumberBall from '@/components/NumberBall'
+import BannerCarousel from '@/components/BannerCarousel'
 import { cn } from '@/lib/utils'
 import { Search, ChevronLeft, ChevronRight, Save, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,7 @@ export default function Concursos() {
   const [loading, setLoading] = useState(false)
   const [checkResults, setCheckResults] = useState<BetCheckResult[] | null>(null)
   const [checkingMyGames, setCheckingMyGames] = useState(false)
+  const [contestScore, setContestScore] = useState<number | null>(null)
 
   const load = async (p = page) => {
     setLoading(true)
@@ -49,7 +51,15 @@ export default function Concursos() {
   useEffect(() => { load(1) }, [])
   useEffect(() => { setSelected(null); setCheckResults(null); setPage(1); load(1) }, [activeGame])
 
-  const sel = async (c: Contest) => { setCheckResults(null); try { const d = await api.getContestDetails(c.contest_number, activeGame); setSelected(d || c) } catch { setSelected(c) } }
+  const sel = async (c: Contest) => { setCheckResults(null); setContestScore(null); try { const d = await api.getContestDetails(c.contest_number, activeGame); setSelected(d || c) } catch { setSelected(c) } }
+
+  useEffect(() => {
+    if (selected) {
+      api.analyzeGame(selected.numbers_sorted, activeGame).then(a => setContestScore(a.structural_score)).catch(() => setContestScore(null))
+    } else {
+      setContestScore(null)
+    }
+  }, [selected, activeGame])
   const fmt = (v: number | null) => !v ? '-' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const saveContest = async () => {
@@ -87,8 +97,8 @@ export default function Concursos() {
             </div>
             <div className="flex gap-2 flex-wrap">
               <Input type="text" placeholder="N. do concurso" value={searchNumber} onChange={e => setSearchNumber(e.target.value)} onKeyDown={e => e.key === 'Enter' && (setPage(1), load(1))} className="w-[130px] text-[13px]" />
-              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="min-h-[48px] text-base" />
-              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="min-h-[48px] text-base" />
+              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-[160px] min-h-[40px] px-3 text-[13px]" />
+              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-[160px] min-h-[40px] px-3 text-[13px]" />
               <Button size="sm" onClick={() => { setPage(1); load(1) }} className="gap-1.5"><Search size={14} /> Buscar</Button>
             </div>
           </div>
@@ -117,7 +127,7 @@ export default function Concursos() {
                   <div className={cn('flex items-center gap-2.5', manyNums && 'w-full')}>
                     <span className="font-mono font-bold text-[13px] text-primary whitespace-nowrap">#{c.contest_number}</span>
                     <span className="text-[11px] text-muted-foreground">{c.contest_date}</span>
-                    {!c.accumulated && <Trophy size={13} className="text-secondary shrink-0" />}
+                    {!c.accumulated && <Trophy size={13} className="text-accent-gold shrink-0" />}
                     {c.accumulated && <Badge variant="secondary" className="text-[9px] py-0 uppercase">Acumulou</Badge>}
                     {extraInfo && <span className="text-[10px] font-semibold text-muted-foreground">{extraInfo}</span>}
                   </div>
@@ -164,11 +174,11 @@ export default function Concursos() {
 
               {/* Check results */}
               {checkResults && checkResults.length > 0 && (
-                <Card className="border-secondary/20 bg-gradient-to-br from-secondary/10 to-card">
+                <Card className="border-[color-mix(in_srgb,var(--accent-gold)_20%,transparent)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent-gold)_10%,var(--card)),var(--card))]">
                   <CardContent className="p-3.5">
                     <div className="flex items-center gap-1.5 mb-2.5">
-                      <Trophy size={15} className="text-secondary" />
-                      <span className="text-xs font-bold text-secondary">Minhas apostas vs Concurso #{selected.contest_number}</span>
+                      <Trophy size={15} className="text-accent-gold" />
+                      <span className="text-xs font-bold text-accent-gold">Minhas apostas vs Concurso #{selected.contest_number}</span>
                       <button onClick={() => setCheckResults(null)} className="ml-auto bg-transparent border-none cursor-pointer text-muted-foreground text-[10px]">Fechar</button>
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -184,7 +194,7 @@ export default function Concursos() {
                               )}>{String(n).padStart(2, '0')}</span>
                             ))}
                           </div>
-                          <span className={cn('text-xs font-extrabold', r.hit_count >= 4 ? 'text-secondary' : 'text-foreground')}>{r.prize_label}</span>
+                          <span className={cn('text-xs font-extrabold', r.hit_count >= 4 ? 'text-accent-gold' : 'text-foreground')}>{r.prize_label}</span>
                         </div>
                       ))}
                     </div>
@@ -214,9 +224,16 @@ export default function Concursos() {
                     {selected.numbers_sorted.map((n, i) => <NumberBall key={n} number={n} size="lg" animated delay={i * 70} />)}
                   </div>
                 )}
+                {contestScore !== null && (
+                  <div className="mt-2">
+                    <Badge className="text-xs">{Math.round(contestScore)} {contestScore >= 80 ? 'Excelente' : contestScore >= 60 ? 'Bom' : 'Regular'}</Badge>
+                  </div>
+                )}
               </div>
 
               <ContestDetails contest={selected} fmt={fmt} />
+
+              <BannerCarousel position="internal" className="mt-6" />
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -249,10 +266,10 @@ function ContestDetails({ contest, fmt }: { contest: Contest; fmt: (v: number | 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <Row label="Acumulou" value={contest.accumulated ? 'Sim' : 'Nao'} color={contest.accumulated ? 'var(--secondary)' : 'var(--primary)'} />
-        {concursoEspecial && <Row label="Concurso especial" value="Sim" color="var(--secondary)" />}
+        <Row label="Acumulou" value={contest.accumulated ? 'Sim' : 'Nao'} color={contest.accumulated ? 'var(--accent-gold)' : 'var(--primary)'} />
+        {concursoEspecial && <Row label="Concurso especial" value="Sim" color="var(--accent-gold)" />}
         {contest.amount_collected != null && contest.amount_collected > 0 && <Row label="Arrecadacao" value={fmt(contest.amount_collected)} />}
-        {contest.estimated_next_prize != null && contest.estimated_next_prize > 0 && <Row label="Premio est. prox." value={fmt(contest.estimated_next_prize)} color="var(--secondary)" />}
+        {contest.estimated_next_prize != null && contest.estimated_next_prize > 0 && <Row label="Premio est. prox." value={fmt(contest.estimated_next_prize)} color="var(--accent-gold)" />}
         {valorAcumulado05 != null && valorAcumulado05 > 0 && <Row label="Acumulado Mega da Virada" value={fmt(valorAcumulado05)} />}
         {valorAcumuladoEspecial != null && valorAcumuladoEspecial > 0 && <Row label="Acumulado especial" value={fmt(valorAcumuladoEspecial)} />}
         {valorAcumuladoProx != null && valorAcumuladoProx > 0 && <Row label="Acumulado prox." value={fmt(valorAcumuladoProx)} />}
@@ -273,12 +290,12 @@ function ContestDetails({ contest, fmt }: { contest: Contest; fmt: (v: number | 
       )}
 
       {mesSorte && (
-        <Card className="bg-secondary/8">
+        <Card className="bg-[color-mix(in_srgb,var(--accent-gold)_8%,var(--card))]">
           <CardContent className="px-4 py-3 flex items-center gap-2.5">
             <span className="text-lg">📅</span>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mes da Sorte</p>
-              <p className="text-[15px] font-extrabold text-secondary mt-0.5">{mesSorte}</p>
+              <p className="text-[15px] font-extrabold text-accent-gold mt-0.5">{mesSorte}</p>
             </div>
           </CardContent>
         </Card>
@@ -337,7 +354,7 @@ function ContestDetails({ contest, fmt }: { contest: Contest; fmt: (v: number | 
               <div key={i} className="bg-card rounded-lg px-3 py-2 text-xs">
                 <span className="font-semibold text-primary">{lg.municipio || 'N/A'}</span>
                 <span className="text-muted-foreground"> - {lg.uf || ''}</span>
-                {lg.ganhadores > 1 && <span className="text-secondary ml-2">({lg.ganhadores} ganhadores)</span>}
+                {lg.ganhadores > 1 && <span className="text-accent-gold ml-2">({lg.ganhadores} ganhadores)</span>}
               </div>
             ))}
           </div>

@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke, convertFileSrc } from '@tauri-apps/api/core'
 
 // Types
 export interface DashboardSummary {
@@ -176,6 +176,7 @@ export const api = {
   exportSavedGamesCsv: () => invoke<string>('export_saved_games_csv'),
   exportFullDatabaseSql: () => invoke<string>('export_full_database_sql'),
   importDatabaseSql: (sql: string) => invoke<string>('import_database_sql', { sql }),
+  getTableCounts: () => invoke<[string, number][]>('get_table_counts'),
   downloadAndImportSql: (url: string, gameType: string) => invoke<string>('download_and_import_sql', { url, gameType }),
   checkForNewContests: () => invoke<string>('check_for_new_contests'),
   checkGameStatus: (gameType: string) => invoke<GameSyncInfo>('check_game_status', { gameType }),
@@ -185,6 +186,7 @@ export const api = {
   toggleBetGame: (id: number) => invoke<boolean>('toggle_bet_game', { id }),
   checkBetResults: (gameType?: string) => invoke<BetCheckResult[]>('check_bet_results', { gameType: gameType || null }),
   checkBetResultsForContest: (gameType: string, contestNumber: number) => invoke<BetCheckResult[]>('check_bet_results_for_contest', { gameType, contestNumber }),
+  checkHistoricalWins: (gameType: string) => invoke<HistoricalWinResult[]>('check_historical_wins', { gameType }),
   getDynamicDashboardStats: (lastN: number | null, gameType?: string) => invoke<DynamicDashboardStats>('get_dynamic_dashboard_stats', { lastN, gameType: gameType || null }),
   // Multi-game
   getAllLotteries: () => invoke<LotteryConfig[]>('get_all_lotteries'),
@@ -207,8 +209,10 @@ export const api = {
   // ═══ AI Assistant ═══
   aiChat: (config: AiConfig, messages: AiMessage[], gameType?: string) => invoke<AiResponse>('ai_chat', { config, messages, gameType: gameType || null }),
   aiQueryDb: (sql: string) => invoke<string>('ai_query_db', { sql }),
+  trackPage: (page: string) => invoke<void>('track_page', { page }).catch(() => {}),
   getAiConfig: () => invoke<AiConfig | null>('get_ai_config'),
   saveAiConfig: (config: AiConfig) => invoke<void>('save_ai_config', { config }),
+  aiSaveGames: (games: AiGameToSave[]) => invoke<string>('ai_save_games', { games }),
 
   // ═══ Lunar Calendar ═══
   importLunarCalendar: (jsonData: string) => invoke<string>('import_lunar_calendar', { jsonData }),
@@ -222,6 +226,10 @@ export const api = {
   backupDatabase: () => invoke<string>('backup_database'),
   safeReset: () => invoke<CleanupResult>('safe_reset'),
   autoCleanup: () => invoke<CleanupResult>('auto_cleanup'),
+
+  // ═══ Banners / Ads ═══
+  getBanners: () => invoke<LocalBanner[]>('get_banners'),
+  syncBanners: () => invoke<LocalBanner[]>('sync_banners_cmd'),
 }
 
 export interface DynamicDashboardStats {
@@ -263,6 +271,18 @@ export interface BetCheckResult {
   prize_label: string
 }
 
+export interface HistoricalWinResult {
+  game_id: number
+  game_numbers: number[]
+  contest_number: number
+  contest_date: string
+  contest_numbers: number[]
+  hits: number[]
+  hit_count: number
+  prize_label: string
+  prize_value: number | null
+}
+
 // ═══ LotoCore Engine Types ═══
 
 export interface AlgorithmWeights {
@@ -293,6 +313,7 @@ export interface LotoCoreConfig {
   mode: string // "single" | "combined" | "weighted"
   weights: AlgorithmWeights
   enabled_algorithms: EnabledAlgorithms
+  xray_enabled: boolean
 }
 
 export interface AlgorithmScores {
@@ -316,6 +337,38 @@ export interface LotoCoreResult {
   generation_time_ms: number
   algorithms_used: string[]
   total_candidates_evaluated: number
+  xray: XRayPipelineSummary | null
+}
+
+export interface XRayStep {
+  step_index: number
+  total_steps: number
+  algorithm_name: string
+  algorithm_key: string
+  status: string
+  duration_ms: number
+  candidates_generated: number
+  candidates_sample: { numbers: number[], score: number }[]
+  score_min: number
+  score_max: number
+  score_avg: number
+  numbers_heatmap: [number, number][]
+  message: string
+}
+
+export interface XRayPipelineSummary {
+  steps: XRayStep[]
+  total_duration_ms: number
+  total_candidates: number
+  final_count: number
+}
+
+// ═══ AI Save Games ═══
+
+export interface AiGameToSave {
+  numbers: number[]
+  game_type: string
+  strategy_label: string
 }
 
 // ═══ AI Layer Types ═══
@@ -354,3 +407,16 @@ export interface CleanupResult {
   freed_bytes: number
   actions: string[]
 }
+
+export interface LocalBanner {
+  id: string
+  position: string
+  local_image_path: string
+  image_url: string
+  link_url: string
+  title: string
+  duration_seconds: number
+}
+
+/** Convert a local file path to a Tauri asset URL for use in <img> src */
+export const assetUrl = (filePath: string) => convertFileSrc(filePath)

@@ -279,6 +279,19 @@ pub struct BetCheckResult {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HistoricalWinResult {
+    pub game_id: i64,
+    pub game_numbers: Vec<i32>,
+    pub contest_number: i64,
+    pub contest_date: String,
+    pub contest_numbers: Vec<i32>,
+    pub hits: Vec<i32>,
+    pub hit_count: i32,
+    pub prize_label: String,
+    pub prize_value: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DashboardNumberData {
     pub number: i32,
     pub frequency: i32,

@@ -38,7 +38,7 @@ export default function Creditos() {
   if (!credits) return <div className="h-full flex items-center justify-center"><Loader2 size={32} className="animate-spin text-primary" /></div>
 
   return (
-    <div className="h-full overflow-auto px-10 py-8">
+    <div>
       <div className="max-w-[720px] mx-auto">
         {/* Cover image */}
         <div className="rounded-xl overflow-hidden mb-6">

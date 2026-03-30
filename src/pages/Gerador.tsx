@@ -5,6 +5,7 @@ import { useLotteryStore } from '@/stores/lotteryStore'
 import LotteryTabs from '@/components/LotteryTabs'
 import NumberBall from '@/components/NumberBall'
 import GameXray from '@/components/GameXray'
+import BannerCarousel from '@/components/BannerCarousel'
 import { cn } from '@/lib/utils'
 import { Dices, Save, RefreshCw, Briefcase, Loader2, ChevronDown, ChevronUp, Minus, Plus, DollarSign, Shuffle, TrendingUp, Clock, Hourglass, Scale, Sparkles, Heart, Copy } from 'lucide-react'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
@@ -64,7 +65,7 @@ export default function Gerador() {
     Promise.all(counts.map(c => api.getBetPrice(activeGame, c).then(p => { if (p) newMap[c] = p }).catch(() => {}))).then(() => setPriceMap(newMap))
   }, [game, portfolio, activeGame])
 
-  const fmtPrice = (v: number | null | undefined) => v && typeof v === 'number' ? `R$ ${v.toFixed(2).replace('.', ',')}` : null
+  const fmtPrice = (v: number | null | undefined) => v && typeof v === 'number' ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : null
   const getGeneratedGamePrice = (g: GeneratedGame) => priceMap[g.numbers.length] ?? betPrice
 
   const gen = async () => {
@@ -111,7 +112,7 @@ export default function Gerador() {
     : null
 
   return (
-    <div className="h-full overflow-auto px-10 py-8">
+    <div>
       <h2 className="text-2xl font-bold tracking-tight mb-1">Gerador de Jogos</h2>
       <p className="text-sm text-muted-foreground mb-4">Gere jogos com base em estrategias estatisticas</p>
 
@@ -131,7 +132,7 @@ export default function Gerador() {
             {priceStr && (
               <>
                 <span className="text-muted-foreground">·</span>
-                <span className="flex items-center gap-1 font-bold" style={{ color: currentConfig.color }}>
+                <span className="flex items-center gap-1 font-bold lottery-text-on-tint" style={{ color: currentConfig.color }}>
                   <DollarSign size={11} /> {priceStr}
                 </span>
               </>
@@ -181,10 +182,10 @@ export default function Gerador() {
           <button onClick={() => setCount(c => Math.max(2, c - 1))} className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center cursor-pointer text-foreground shrink-0"><Minus size={14} /></button>
           <span className="w-7 text-center text-sm font-bold text-foreground select-none">{count}</span>
           <button onClick={() => setCount(c => Math.min(20, c + 1))} className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center cursor-pointer text-foreground shrink-0"><Plus size={14} /></button>
-          <button onClick={genPortfolio} disabled={loading} className="flex items-center gap-1.5 text-[13px] font-semibold text-secondary bg-transparent border-none cursor-pointer">
-            <Briefcase size={15} /> Gerar carteira
-          </button>
         </div>
+        <Button variant="secondary" onClick={genPortfolio} disabled={loading} className="gap-1.5">
+          <Briefcase size={15} /> Gerar {count} jogos
+        </Button>
       </div>
 
       {/* Single game result */}
@@ -312,6 +313,8 @@ export default function Gerador() {
       <p className="text-[11px] text-center text-muted-foreground/50 font-medium pt-2">
         As analises sao baseadas em historico e estatistica. Nao garantem resultados futuros.
       </p>
+
+      <BannerCarousel position="internal" className="mt-6" />
     </div>
   )
 }

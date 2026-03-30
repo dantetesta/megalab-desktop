@@ -30,45 +30,25 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, padding: 40, background: '#0c1518', color: '#fff' }}>
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 10 }}>❌ Erro na Aplicação</h1>
-            <p style={{ fontSize: 16, color: '#aaa', marginBottom: 20 }}>
-              Desculpe, algo deu errado. Aqui está o erro:
+        <div className="h-screen flex items-center justify-center flex-col gap-5 p-10 bg-[#0c1518] text-white">
+          <div className="text-center">
+            <h1 className="text-[32px] font-extrabold mb-2.5">Erro na Aplicacao</h1>
+            <p className="text-base text-[#aaa] mb-5">
+              Desculpe, algo deu errado. Aqui esta o erro:
             </p>
-            <div style={{
-              background: '#1a2e36',
-              padding: '20px',
-              borderRadius: 10,
-              fontFamily: 'monospace',
-              fontSize: 12,
-              maxWidth: 600,
-              textAlign: 'left',
-              maxHeight: 200,
-              overflow: 'auto',
-              marginBottom: 20
-            }}>
-              <p style={{ margin: 0, color: '#ff6b6b', fontWeight: 'bold' }}>
+            <div className="bg-[#1a2e36] p-5 rounded-[10px] font-mono text-xs max-w-[600px] text-left max-h-[200px] overflow-auto mb-5">
+              <p className="m-0 text-[#ff6b6b] font-bold">
                 {this.state.error?.message}
               </p>
-              <pre style={{ margin: '10px 0 0 0', color: '#aaa', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              <pre className="mt-2.5 mb-0 mx-0 text-[#aaa] overflow-auto whitespace-pre-wrap break-words">
                 {this.state.error?.stack}
               </pre>
             </div>
             <button
               onClick={() => window.location.reload()}
-              style={{
-                padding: '12px 24px',
-                borderRadius: 8,
-                background: 'var(--ml-primary, #00a876)',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 600
-              }}
+              className="px-6 py-3 rounded-lg bg-[var(--ml-primary,#00a876)] text-white border-none cursor-pointer text-sm font-semibold"
             >
-              🔄 Reiniciar Aplicação
+              Reiniciar Aplicacao
             </button>
           </div>
         </div>

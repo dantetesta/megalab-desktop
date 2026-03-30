@@ -152,7 +152,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
                   <span className="text-[13px] font-bold text-foreground flex-1">{item.label}</span>
                   <div
-                    className={cn('w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all', !isSelected && 'border-2 border-border')}
+                    className={cn('w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all', isSelected ? 'lottery-btn' : 'border-2 border-border')}
                     style={isSelected ? { background: color } : undefined}
                   >
                     {isSelected && (
@@ -227,7 +227,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                     {state?.message && (
                       <div className={cn(
                         'text-[11px] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap',
-                        status === 'error' ? 'text-destructive' : status === 'done' ? 'font-semibold' : 'text-muted-foreground',
+                        status === 'error' ? 'text-destructive' : status === 'done' ? 'font-semibold lottery-text-on-tint' : 'text-muted-foreground',
                       )} style={status === 'done' ? { color } : undefined}>
                         {state.message}
                       </div>

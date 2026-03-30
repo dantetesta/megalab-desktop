@@ -20,7 +20,10 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   currentPage: 'dashboard',
-  setCurrentPage: (page) => set({ currentPage: page }),
+  setCurrentPage: (page) => {
+    set({ currentPage: page })
+    api.trackPage(page)
+  },
 
   dashboard: null,
   loadDashboard: async () => {

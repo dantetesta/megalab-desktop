@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore'
-import { useThemeStore } from '@/stores/themeStore'
 import { useLotteryStore } from '@/stores/lotteryStore'
 import { api } from '@/lib/tauri'
-import { cn } from '@/lib/utils'
 import Sidebar from '@/components/Sidebar'
 import Toast from '@/components/Toast'
+import { Menu } from 'lucide-react'
 import Onboarding from '@/pages/Onboarding'
 import Dashboard from '@/pages/Dashboard'
 import Concursos from '@/pages/Concursos'
@@ -18,9 +17,17 @@ import Assistente from '@/pages/Assistente'
 
 function App() {
   const { currentPage } = useAppStore()
-  const { theme } = useThemeStore()
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null)
   const loadLotteries = useLotteryStore(s => s.load)
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    return localStorage.getItem('lotolab-sidebar') !== 'closed'
+  })
+
+  const toggleSidebar = () => {
+    const next = !sidebarOpen
+    setSidebarOpen(next)
+    localStorage.setItem('lotolab-sidebar', next ? 'open' : 'closed')
+  }
 
   useEffect(() => {
     console.log('App iniciando, verificando onboarding...')
@@ -39,7 +46,7 @@ function App() {
 
   if (onboardingDone === null) {
     return (
-      <div className={cn(theme, 'w-screen h-screen flex items-center justify-center bg-background')}>
+      <div className="w-screen h-screen flex items-center justify-center bg-background">
         <img src="/logo.png" alt="LotoLab" className="w-[180px] opacity-80 animate-fade-in" />
       </div>
     )
@@ -47,7 +54,7 @@ function App() {
 
   if (!onboardingDone) {
     return (
-      <div className={cn(theme, 'w-screen h-screen bg-background')}>
+      <div className="w-screen h-screen bg-background">
         <Onboarding onComplete={() => { setOnboardingDone(true); loadLotteries() }} />
         <Toast />
       </div>
@@ -74,14 +81,29 @@ function App() {
     }
   }
 
+  const needsPadding = !['assistente', 'lotocore', 'concursos'].includes(currentPage)
+
   return (
-    <div className={cn(theme, 'grid grid-cols-[240px_1fr] h-screen w-screen overflow-hidden bg-background')}>
-      <Sidebar />
-      <main className="overflow-hidden min-w-0 relative bg-background">
-        <div key={currentPage} className="page-enter h-full w-full overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+      {/* Sidebar */}
+      {sidebarOpen && <Sidebar onClose={toggleSidebar} />}
+
+      {/* Main content */}
+      <div className="flex-1 relative min-w-0 h-full overflow-hidden">
+        {/* Toggle button */}
+        {!sidebarOpen && (
+          <button
+            onClick={toggleSidebar}
+            className="fixed top-3 left-3 z-30 w-9 h-9 rounded-lg bg-card border border-border flex items-center justify-center hover:bg-accent transition-colors"
+          >
+            <Menu size={18} />
+          </button>
+        )}
+
+        <div key={currentPage} className="absolute inset-0 overflow-y-auto" style={needsPadding ? { padding: 32 } : undefined}>
           {renderPage()}
         </div>
-      </main>
+      </div>
       <Toast />
     </div>
   )

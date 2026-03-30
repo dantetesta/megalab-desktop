@@ -16,6 +16,8 @@ pub struct LotoCoreConfig {
     pub mode: String,
     pub weights: AlgorithmWeights,
     pub enabled_algorithms: EnabledAlgorithms,
+    #[serde(default)]
+    pub xray_enabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -63,6 +65,38 @@ pub struct LotoCoreResult {
     pub generation_time_ms: u64,
     pub algorithms_used: Vec<String>,
     pub total_candidates_evaluated: u64,
+    pub xray: Option<XRayPipelineSummary>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct XRayStep {
+    pub step_index: u32,
+    pub total_steps: u32,
+    pub algorithm_name: String,
+    pub algorithm_key: String,
+    pub status: String,
+    pub duration_ms: u64,
+    pub candidates_generated: u64,
+    pub candidates_sample: Vec<XRaySample>,
+    pub score_min: f64,
+    pub score_max: f64,
+    pub score_avg: f64,
+    pub numbers_heatmap: Vec<(i32, u32)>,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct XRaySample {
+    pub numbers: Vec<i32>,
+    pub score: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct XRayPipelineSummary {
+    pub steps: Vec<XRayStep>,
+    pub total_duration_ms: u64,
+    pub total_candidates: u64,
+    pub final_count: u64,
 }
 
 struct HistoricalData {
@@ -115,6 +149,236 @@ pub fn generate_lotocore(db: &Database, config: &LotoCoreConfig) -> Result<LotoC
         generation_time_ms: start.elapsed().as_millis() as u64,
         algorithms_used,
         total_candidates_evaluated: total_evaluated,
+        xray: None,
+    })
+}
+
+pub fn generate_lotocore_xray(db: &Database, config: &LotoCoreConfig) -> Result<LotoCoreResult, String> {
+    let start = std::time::Instant::now();
+    let pool_start = if config.pool_size == 100 { 0 } else { 1 };
+    let pool_end = if config.pool_size == 100 { 99 } else { config.pool_size };
+    let pool: Vec<i32> = (pool_start..=pool_end).collect();
+    let hist = precompute_historical(db, &config.game_type, &pool)?;
+
+    let mut rng = rand::thread_rng();
+    let ea = &config.enabled_algorithms;
+    let n = config.num_games.max(1) as usize;
+
+    let algorithms: Vec<(&str, &str, bool)> = vec![
+        ("Frequencia", "frequency", ea.frequency),
+        ("Atraso", "delay", ea.delay),
+        ("Tendencia Recente", "bayesian", ea.bayesian),
+        ("Analise de Sequencia", "markov", ea.markov),
+        ("Simulacao Massiva", "monte_carlo", ea.monte_carlo),
+        ("Distribuicao Inteligente", "entropy", ea.entropy),
+        ("Evitar Padroes", "pattern_avoidance", ea.pattern_avoidance),
+        ("Evolucao de Jogos", "genetic", ea.genetic),
+        ("Otimizacao Final", "annealing", ea.annealing),
+    ];
+
+    let total_steps = algorithms.iter().filter(|(_, _, e)| *e).count() as u32;
+    let mut step_index = 0u32;
+    let mut all_candidates: Vec<GeneratedGame> = Vec::new();
+    let mut xray_steps: Vec<XRayStep> = Vec::new();
+    let mut total_evaluated: u64 = 0;
+    let mut algorithms_used: Vec<String> = Vec::new();
+
+    for (name, key, enabled) in &algorithms {
+        if !*enabled {
+            continue;
+        }
+        algorithms_used.push(name.to_string());
+        let step_start = std::time::Instant::now();
+        let mut step_candidates: Vec<GeneratedGame> = Vec::new();
+        let mut step_eval: u64 = 0;
+
+        match *key {
+            "frequency" => {
+                for _ in 0..n {
+                    let nums = gen_freq(&pool, config.pick_count as usize, &hist, &mut rng);
+                    step_eval += 1;
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+            }
+            "delay" => {
+                for _ in 0..n {
+                    let nums = gen_delay(&pool, config.pick_count as usize, &hist, &mut rng);
+                    step_eval += 1;
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+            }
+            "bayesian" => {
+                for _ in 0..n {
+                    let nums = gen_bayesian(&pool, config.pick_count as usize, &hist, &mut rng);
+                    step_eval += 1;
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+            }
+            "markov" => {
+                for _ in 0..n {
+                    let nums = gen_markov(&pool, config.pick_count as usize, &hist, &mut rng);
+                    step_eval += 1;
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+            }
+            "monte_carlo" => {
+                let mc_iter = config.simulation_depth.max(100) as usize;
+                for _ in 0..mc_iter {
+                    let nums = rand_combo(&pool, config.pick_count as usize, &mut rng);
+                    step_eval += 1;
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+                // Sort and keep top n
+                step_candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+                step_candidates.truncate(n);
+            }
+            "entropy" | "pattern_avoidance" => {
+                for _ in 0..n {
+                    let nums = rand_combo(&pool, config.pick_count as usize, &mut rng);
+                    step_eval += 1;
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+            }
+            "genetic" => {
+                let gs = run_genetic(config, &pool, &hist, &mut rng)?;
+                step_eval += (gs.len() * 50) as u64;
+                for nums in gs {
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+            }
+            "annealing" => {
+                for _ in 0..n.min(4) {
+                    let nums = run_annealing(config, &pool, &hist, &mut rng)?;
+                    step_eval += 200;
+                    let s = score_game(&nums, config, &hist);
+                    step_candidates.push(GeneratedGame {
+                        numbers: nums,
+                        score: composite_score(&s, &config.weights),
+                        algorithm_scores: s,
+                    });
+                }
+            }
+            _ => {}
+        }
+
+        let duration_ms = step_start.elapsed().as_millis() as u64;
+
+        // Compute score stats
+        let (score_min, score_max, score_avg) = if step_candidates.is_empty() {
+            (0.0, 0.0, 0.0)
+        } else {
+            let min = step_candidates.iter().map(|g| g.score).fold(f64::INFINITY, f64::min);
+            let max = step_candidates.iter().map(|g| g.score).fold(f64::NEG_INFINITY, f64::max);
+            let avg = step_candidates.iter().map(|g| g.score).sum::<f64>() / step_candidates.len() as f64;
+            (min, max, avg)
+        };
+
+        // Build heatmap
+        let mut heatmap: HashMap<i32, u32> = HashMap::new();
+        for game in &step_candidates {
+            for &num in &game.numbers {
+                *heatmap.entry(num).or_insert(0) += 1;
+            }
+        }
+        let mut heatmap_vec: Vec<(i32, u32)> = heatmap.into_iter().collect();
+        heatmap_vec.sort_by(|a, b| b.1.cmp(&a.1));
+        heatmap_vec.truncate(20);
+
+        // Sample top 3 candidates
+        let mut sorted_step = step_candidates.clone();
+        sorted_step.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        let candidates_sample: Vec<XRaySample> = sorted_step.iter().take(3).map(|g| XRaySample {
+            numbers: g.numbers.clone(),
+            score: g.score,
+        }).collect();
+
+        let candidates_generated = step_candidates.len() as u64;
+        total_evaluated += step_eval;
+
+        xray_steps.push(XRayStep {
+            step_index,
+            total_steps,
+            algorithm_name: name.to_string(),
+            algorithm_key: key.to_string(),
+            status: "completed".to_string(),
+            duration_ms,
+            candidates_generated,
+            candidates_sample,
+            score_min,
+            score_max,
+            score_avg,
+            numbers_heatmap: heatmap_vec,
+            message: format!("{} gerou {} candidatos em {}ms", name, candidates_generated, duration_ms),
+        });
+
+        all_candidates.extend(step_candidates);
+        step_index += 1;
+    }
+
+    // Sort, deduplicate, take top N
+    all_candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    let mut final_games: Vec<GeneratedGame> = Vec::new();
+    let mut seen: HashSet<Vec<i32>> = HashSet::new();
+    for game in all_candidates {
+        if seen.insert(game.numbers.clone()) {
+            final_games.push(game);
+            if final_games.len() >= n {
+                break;
+            }
+        }
+    }
+
+    let total_duration_ms = start.elapsed().as_millis() as u64;
+    let final_count = final_games.len() as u64;
+
+    let xray_summary = XRayPipelineSummary {
+        steps: xray_steps,
+        total_duration_ms,
+        total_candidates: total_evaluated,
+        final_count,
+    };
+
+    Ok(LotoCoreResult {
+        games: final_games,
+        generation_time_ms: total_duration_ms,
+        algorithms_used,
+        total_candidates_evaluated: total_evaluated,
+        xray: Some(xray_summary),
     })
 }
 

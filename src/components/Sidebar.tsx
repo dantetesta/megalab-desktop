@@ -1,8 +1,6 @@
-import { Home, Search, Cpu, Dices, MessageSquare, FolderHeart, Award, Sun, Moon, Settings } from 'lucide-react'
+import { Home, Search, Cpu, Dices, MessageSquare, FolderHeart, Award, Settings, ChevronLeft } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
-import { useThemeStore } from '@/stores/themeStore'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import BannerCarousel from '@/components/BannerCarousel'
 
 const navItems = [
   { id: 'dashboard', label: 'Inicio', icon: Home },
@@ -15,54 +13,49 @@ const navItems = [
   { id: 'creditos', label: 'Creditos', icon: Award },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  onClose: () => void
+}
+
+export default function Sidebar({ onClose }: SidebarProps) {
   const { currentPage, setCurrentPage } = useAppStore()
-  const { theme, toggleTheme } = useThemeStore()
 
   return (
-    <aside className="w-60 h-screen flex flex-col z-10 bg-card/90 backdrop-blur-xl border-r border-border">
-      {/* Logo */}
-      <div className="px-4 pt-3.5 pb-2 flex justify-center">
-        <img src="/logo.png" alt="LotoLab" className="h-[132px] object-contain" />
+    <aside className="w-[220px] shrink-0 h-screen flex flex-col bg-card border-r border-border animate-slide-in-left">
+      {/* Logo + close */}
+      <div className="px-3 pt-3 pb-1 flex items-center justify-between">
+        <img src="/logo.png" alt="LotoLab" className="h-[80px] object-contain" />
+        <button onClick={onClose} className="w-7 h-7 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground">
+          <ChevronLeft size={16} />
+        </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-1 flex flex-col gap-0.5">
-        {navItems.map((item) => {
+      <nav className="flex-1 px-2 py-1 flex flex-col gap-0.5 overflow-y-auto">
+        {navItems.map(item => {
           const Icon = item.icon
           const isActive = currentPage === item.id
           return (
             <button
               key={item.id}
-              onClick={() => { console.log(`Navegando para: ${item.id}`); setCurrentPage(item.id) }}
-              className={cn(
-                'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] border-none cursor-pointer',
-                'text-[13px] text-left min-h-[42px] transition-all duration-150 font-inherit',
-                isActive
-                  ? 'bg-accent font-semibold text-primary'
-                  : 'bg-transparent font-medium text-muted-foreground hover:bg-accent/50'
-              )}
+              onClick={() => setCurrentPage(item.id)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-colors ${
+                isActive ? 'bg-accent font-semibold text-primary' : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              }`}
             >
-              <Icon size={17} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
               {item.label}
             </button>
           )
         })}
       </nav>
 
-      {/* Theme + version */}
-      <div className="px-2 pb-3.5 pt-1.5">
-        <Button
-          variant="secondary"
-          onClick={toggleTheme}
-          className="w-full flex items-center gap-2 justify-start text-xs font-medium min-h-[38px]"
-        >
-          {theme === '' ? <Sun size={15} /> : <Moon size={15} />}
-          {theme === '' ? 'Modo claro' : 'Modo escuro'}
-        </Button>
-        <div className="text-[9px] px-1 pt-1.5 text-muted-foreground/40 font-medium">
-          LotoLab v4.0.0
-        </div>
+      <div className="px-2 pb-1">
+        <BannerCarousel position="sidebar" className="mb-2" />
+      </div>
+
+      <div className="px-3 pb-3 text-[10px] text-muted-foreground/50">
+        LotoLab Core Engine v4.0
       </div>
     </aside>
   )

@@ -102,12 +102,7 @@ export default function HeatMap({ data, highlighted = [], columns = 10 }: Props)
       {/* Legend */}
       <div className="flex items-center gap-2.5 mt-3.5">
         <span className="text-[10px] font-semibold text-muted-foreground">Frio</span>
-        <div
-          className="flex-1 max-w-[200px] h-2.5 rounded-full shadow-sm"
-          style={{
-            background: 'linear-gradient(90deg, rgb(55,100,190), rgb(80,185,160), rgb(120,200,80), rgb(230,200,50), rgb(240,130,40), rgb(220,50,40))',
-          }}
-        />
+        <div className="flex-1 max-w-[200px] h-2.5 rounded-full shadow-sm bg-[linear-gradient(90deg,rgb(55,100,190),rgb(80,185,160),rgb(120,200,80),rgb(230,200,50),rgb(240,130,40),rgb(220,50,40))]" />
         <span className="text-[10px] font-semibold text-muted-foreground">Quente</span>
         <span className="text-[9px] text-muted-foreground ml-1.5">({minFreq}x - {maxFreq}x)</span>
       </div>
@@ -138,9 +133,9 @@ function NumberDetailPanel({ number, allData, maxFreq, minFreq, onClose }: {
   const pctRank = allData.filter(d => d.frequency <= number.frequency).length / allData.length * 100
 
   const freqLabel = intensity >= 0.7 ? 'Muito quente' : intensity >= 0.4 ? 'Normal' : 'Fria'
-  const freqColor = intensity >= 0.7 ? 'text-destructive' : intensity >= 0.4 ? 'text-secondary' : 'text-blue-400'
+  const freqColor = intensity >= 0.7 ? 'text-destructive' : intensity >= 0.4 ? 'text-accent-gold' : 'text-blue-400'
   const delayLabel = number.delay === 0 ? 'Saiu no ultimo concurso' : number.delay <= 3 ? 'Recente' : number.delay <= 10 ? 'Moderado' : 'Atrasada'
-  const delayColorStyle = number.delay <= 3 ? 'var(--primary)' : number.delay <= 10 ? 'var(--secondary)' : 'var(--destructive)'
+  const delayColorStyle = number.delay <= 3 ? 'var(--primary)' : number.delay <= 10 ? 'var(--accent-gold)' : 'var(--destructive)'
 
   return (
     <>
@@ -183,7 +178,7 @@ function NumberDetailPanel({ number, allData, maxFreq, minFreq, onClose }: {
             <CardContent className="p-4">
               <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Status da dezena</p>
               <div className="flex flex-col gap-2.5">
-                <StatusRow label="Classificacao" value={freqLabel} color={intensity >= 0.7 ? 'var(--destructive)' : intensity >= 0.4 ? 'var(--secondary)' : '#60a5fa'} />
+                <StatusRow label="Classificacao" value={freqLabel} color={intensity >= 0.7 ? 'var(--destructive)' : intensity >= 0.4 ? 'var(--accent-gold)' : '#60a5fa'} />
                 <StatusRow label="Situacao de atraso" value={delayLabel} color={delayColorStyle} />
                 <StatusRow label="Posicao no ranking" value={`#${allData.filter(d => d.frequency > number.frequency).length + 1} de ${allData.length}`} />
               </div>

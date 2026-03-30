@@ -1,6 +1,7 @@
 import { type GameAnalysis } from '@/lib/tauri'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import NumberBall from '@/components/NumberBall'
+import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 
 interface Props {
@@ -10,13 +11,13 @@ interface Props {
 }
 
 const tooltipStyle = {
-  background: '#1a2024',
-  border: 'none',
-  borderRadius: 10,
-  color: '#e0e8ec',
-  fontSize: 12,
+  background: '#1e1e2e',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 8,
+  color: '#e0e0e0',
+  fontSize: 11,
   fontFamily: 'Inter',
-  padding: '8px 12px',
+  padding: '6px 10px',
 }
 
 const getSumRange = (gameType?: string): { min: number; max: number } | null => {
@@ -45,26 +46,26 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
   ]
   const rangeData = rangeDataAll.filter(d => d.qtd > 0 || rangeDataAll.length <= 6)
 
-  const scoreLabel = (s: number) => s >= 70 ? { t: 'Excelente', c: 'var(--primary)' } : s >= 50 ? { t: 'Bom', c: 'var(--secondary)' } : { t: 'Regular', c: 'var(--destructive)' }
+  const scoreLabel = (s: number) => s >= 70 ? { t: 'Excelente', c: 'var(--primary)' } : s >= 50 ? { t: 'Bom', c: 'var(--accent-gold)' } : { t: 'Regular', c: 'var(--destructive)' }
   const sc = scoreLabel(analysis.structural_score)
 
   return (
-    <div className="mt-4 flex flex-col gap-4 animate-expand">
+    <div className="mt-3 flex flex-col gap-2.5 animate-expand">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="w-[3px] h-5 rounded bg-gradient-to-b from-primary to-primary/60" />
-        <h4 className="text-xs font-extrabold uppercase tracking-wider text-primary">Raio-X do Jogo</h4>
+      <div className="flex items-center gap-1.5">
+        <div className="w-[3px] h-4 rounded bg-gradient-to-b from-primary to-primary/60" />
+        <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-primary">Raio-X do Jogo</h4>
       </div>
 
       {/* Score cards */}
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-3 gap-1.5">
         <ScoreCard label="Score Estrutural" value={analysis.structural_score.toFixed(0)} sub={sc.t} color={sc.c} />
         <ScoreCard label="Afinidade Historica" value={analysis.affinity_score.toFixed(1)} sub="pontos" color="#5b9bd5" />
         <ScoreCard label="Dispersao" value={analysis.dispersion_score.toFixed(1)} sub="desvio padrao" />
       </div>
 
       {/* Metrics grid */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-1.5">
         <Metric label="Soma total" value={String(analysis.sum_total)} hint={(() => {
           const range = getSumRange(gameType)
           if (!range) return undefined
@@ -84,9 +85,9 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
 
       {/* Distribution chart */}
       <Card>
-        <CardContent className="p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Distribuicao por faixas de dezenas</p>
-          <ResponsiveContainer width="100%" height={compact ? 100 : 120}>
+        <CardContent className="p-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Distribuicao por faixas de dezenas</p>
+          <ResponsiveContainer width="100%" height={compact ? 80 : 90}>
             <BarChart data={rangeData} barCategoryGap="20%">
               <XAxis dataKey="faixa" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} width={18} />
@@ -102,11 +103,11 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
       {/* Number details */}
       {analysis.number_details.length > 0 && (
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Detalhes por dezena</p>
-          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(analysis.number_details.length, 6)}, 1fr)` }}>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Detalhes por dezena</p>
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(analysis.number_details.length, 6)}, 1fr)` }}>
             {analysis.number_details.map((d) => (
               <Card key={d.number}>
-                <CardContent className="p-2.5 text-center flex flex-col items-center">
+                <CardContent className="p-1.5 text-center flex flex-col items-center">
                   {gameType === 'supersete' && (
                     <span className="text-[9px] font-bold text-primary/70 mb-0.5">C{analysis.number_details.indexOf(d) + 1}</span>
                   )}
@@ -122,17 +123,17 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
       )}
 
       {/* Signature matches */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-1.5">
         <Card>
-          <CardContent className="p-3.5">
-            <p className="text-[11px] text-muted-foreground mb-1">Mesma paridade no historico</p>
-            <p className="text-xl font-extrabold">{analysis.same_parity_count} <span className="text-[11px] font-medium text-muted-foreground">concursos</span></p>
+          <CardContent className="p-2.5">
+            <p className="text-[10px] text-muted-foreground mb-0.5">Mesma paridade no historico</p>
+            <p className="text-base font-extrabold">{analysis.same_parity_count} <span className="text-[10px] font-medium text-muted-foreground">concursos</span></p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-3.5">
-            <p className="text-[11px] text-muted-foreground mb-1">Mesma dist. de faixas no historico</p>
-            <p className="text-xl font-extrabold">{analysis.same_range_count} <span className="text-[11px] font-medium text-muted-foreground">concursos</span></p>
+          <CardContent className="p-2.5">
+            <p className="text-[10px] text-muted-foreground mb-0.5">Mesma dist. de faixas no historico</p>
+            <p className="text-base font-extrabold">{analysis.same_range_count} <span className="text-[10px] font-medium text-muted-foreground">concursos</span></p>
           </CardContent>
         </Card>
       </div>
@@ -143,10 +144,10 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
 function ScoreCard({ label, value, sub, color }: { label: string; value: string; sub: string; color?: string }) {
   return (
     <Card>
-      <CardContent className="p-3.5 text-center">
-        <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">{label}</p>
-        <p className="text-[28px] font-extrabold leading-none" style={{ color: color || 'var(--foreground)' }}>{value}</p>
-        <p className="text-[10px] font-semibold mt-1" style={{ color: color || 'var(--muted-foreground)' }}>{sub}</p>
+      <CardContent className="p-2.5 text-center">
+        <p className="text-[9px] font-semibold text-muted-foreground mb-1">{label}</p>
+        <p className="text-xl font-extrabold leading-none" style={{ color: color || 'var(--foreground)' }}>{value}</p>
+        <p className="text-[9px] font-semibold mt-0.5" style={{ color: color || 'var(--muted-foreground)' }}>{sub}</p>
       </CardContent>
     </Card>
   )
@@ -155,10 +156,10 @@ function ScoreCard({ label, value, sub, color }: { label: string; value: string;
 function Metric({ label, value, hint, ok }: { label: string; value: string; hint?: string; ok?: boolean }) {
   return (
     <Card>
-      <CardContent className="p-3.5">
-        <p className="text-[11px] text-muted-foreground mb-1">{label}</p>
-        <p className="text-lg font-extrabold">{value}</p>
-        {hint && <p className="text-[10px] mt-1 font-semibold" style={{ color: ok ? 'var(--primary)' : 'var(--secondary)' }}>{hint}</p>}
+      <CardContent className="p-2.5">
+        <p className="text-[10px] text-muted-foreground mb-0.5">{label}</p>
+        <p className="text-sm font-extrabold">{value}</p>
+        {hint && <p className={cn('text-[9px] mt-0.5 font-semibold', ok ? 'text-primary' : 'text-accent-gold')}>{hint}</p>}
       </CardContent>
     </Card>
   )

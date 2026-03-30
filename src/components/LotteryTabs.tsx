@@ -19,7 +19,7 @@ export default function LotteryTabs({ activeGame, onSelect, games }: Props) {
               'px-4 py-2 rounded-t-[10px] text-[13px] font-semibold min-h-[40px]',
               'border-none cursor-pointer transition-all duration-150',
               isActive
-                ? 'border-b-2 hover:opacity-100'
+                ? 'border-b-2 hover:opacity-100 lottery-text-on-tint'
                 : 'bg-transparent text-muted-foreground border-b-2 border-transparent hover:bg-accent',
             )}
             style={{

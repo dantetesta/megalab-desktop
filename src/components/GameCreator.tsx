@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '@/lib/tauri'
 import { useAppStore } from '@/stores/appStore'
 import { useLotteryStore } from '@/stores/lotteryStore'
 import { cn } from '@/lib/utils'
-import { Grid3X3, FileText, Save, Trash2, Plus } from 'lucide-react'
+import { Grid3X3, FileText, Save, Trash2, Plus, DollarSign, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -217,6 +217,17 @@ export default function GameCreator({ onClose, onSaved }: Props) {
   const [timeCoracao, setTimeCoracao] = useState<string>('')
   const [mesSorte, setMesSorte] = useState<string>('')
   const [bulkText, setBulkText] = useState('')
+  const [betPrice, setBetPrice] = useState<number | null>(null)
+
+  const gameType = activeGame
+
+  useEffect(() => {
+    if (gameType && selected.length >= minPick) {
+      api.getBetPrice(gameType, selected.length).then(setBetPrice).catch(() => setBetPrice(null))
+    } else {
+      setBetPrice(null)
+    }
+  }, [gameType, selected.length, minPick])
 
   const toggleNumber = (n: number) => {
     setSelected(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n].sort((a, b) => a - b))
@@ -280,7 +291,7 @@ export default function GameCreator({ onClose, onSaved }: Props) {
   const isMesValid = () => !hasMesSorte || mesSorte.trim() !== ''
   const isFormValid = isMainValid() && isTrevoValid() && isTimeValid() && isMesValid()
 
-  const saveVisualGame = async () => {
+  const saveVisualGame = async (mode: 'normal' | 'bet' | 'favorite' = 'normal') => {
     if (!isMainValid()) {
       if (isSuperSete) showToast('Selecione ao menos 1 numero em cada coluna.', 'error')
       else if (isFixedPick) showToast(`Selecione exatamente ${minPick} dezenas.`, 'error')
@@ -311,8 +322,16 @@ export default function GameCreator({ onClose, onSaved }: Props) {
         if (extras.length > 0) notes = extras.join(' | ')
       }
 
-      await api.saveGame({ name: gameName || null, numbers, strategy_id: 'manual', strategy_label: strategyLabel, notes, game_type: activeGame })
-      showToast(`Jogo salvo com sucesso!`, 'success')
+      const id = await api.saveGame({ name: gameName || null, numbers, strategy_id: 'manual', strategy_label: strategyLabel, notes, game_type: activeGame })
+
+      if (mode === 'bet') {
+        try { await api.markGameAsBet(id) } catch { /* ignore */ }
+      } else if (mode === 'favorite') {
+        try { await api.toggleFavoriteGame(id) } catch { /* ignore */ }
+      }
+
+      const modeLabel = mode === 'bet' ? 'Jogo salvo como aposta!' : mode === 'favorite' ? 'Jogo salvo como favorito!' : 'Jogo salvo com sucesso!'
+      showToast(modeLabel, 'success')
       clearAll()
       setGameName('')
       onSaved()
@@ -352,7 +371,7 @@ export default function GameCreator({ onClose, onSaved }: Props) {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-[min(95vw,1000px)] max-h-[90vh] overflow-auto p-0 gap-0">
+      <DialogContent className="max-w-[min(95vw,1000px)] sm:max-w-[min(95vw,1000px)] max-h-[90vh] overflow-auto p-0 gap-0">
         <DialogHeader className="px-6 pt-5 pb-0">
           <DialogTitle className="text-lg font-bold flex items-center gap-2">
             Criar jogo personalizado
@@ -538,10 +557,24 @@ export default function GameCreator({ onClose, onSaved }: Props) {
 
                 <div className="flex-1" />
 
-                <Button onClick={saveVisualGame} disabled={!isFormValid} className="w-full justify-center gap-2">
-                  <Save size={16} />
-                  {isSuperSete ? `Salvar jogo Super Sete` : `Salvar jogo (${selected.length} dezenas)`}
-                </Button>
+                <div className="flex flex-col gap-2">
+                  {betPrice != null && betPrice > 0 && (
+                    <p className="text-center text-sm text-muted-foreground">
+                      Custo: <span className="font-bold text-primary">{betPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span> ({selected.length} dezenas)
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button className="flex-1" onClick={() => saveVisualGame('normal')} disabled={!isFormValid}>
+                      <Save size={14} /> Salvar
+                    </Button>
+                    <Button className="flex-1" variant="secondary" onClick={() => saveVisualGame('bet')} disabled={!isFormValid}>
+                      <DollarSign size={14} /> Salvar e Apostar
+                    </Button>
+                    <Button className="flex-1" variant="outline" onClick={() => saveVisualGame('favorite')} disabled={!isFormValid}>
+                      <Star size={14} /> Favorito
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           )}

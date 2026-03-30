@@ -1,5 +1,7 @@
 mod ai;
+mod analytics;
 mod api;
+mod banners;
 mod datamanager;
 mod db;
 mod generators;
@@ -234,7 +236,33 @@ fn analyze_game_cmd(state: State<Arc<AppState>>, numbers: Vec<i32>, game_type: O
 // ── Saved Games ──
 #[tauri::command]
 fn save_game(state: State<Arc<AppState>>, params: SaveGameParams) -> Result<i64, String> {
+    analytics::track_save_game(params.game_type.as_deref().unwrap_or("unknown"), &params.strategy_id);
     state.db.save_game(&params)
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct AiGameToSave {
+    numbers: Vec<i32>,
+    game_type: String,
+    strategy_label: String,
+}
+
+#[tauri::command]
+fn ai_save_games(state: State<Arc<AppState>>, games: Vec<AiGameToSave>) -> Result<String, String> {
+    let mut saved = 0;
+    for game in &games {
+        let params = SaveGameParams {
+            name: None,
+            numbers: game.numbers.clone(),
+            strategy_id: "ai_suggestion".to_string(),
+            strategy_label: game.strategy_label.clone(),
+            notes: Some("Gerado pelo Assistente IA".to_string()),
+            target_contest_number: None,
+            game_type: Some(game.game_type.clone()),
+        };
+        if state.db.save_game(&params).is_ok() { saved += 1; }
+    }
+    Ok(format!("{} jogos salvos com sucesso!", saved))
 }
 
 #[tauri::command]
@@ -341,6 +369,114 @@ fn check_bet_results_for_contest(state: State<Arc<AppState>>, game_type: Option<
     Ok(results)
 }
 
+// ── Check historical wins for all bet games across ALL contests ──
+#[tauri::command]
+fn check_historical_wins(state: State<Arc<AppState>>, game_type: String) -> Result<Vec<HistoricalWinResult>, String> {
+    let gt = game_type.as_str();
+
+    // Get only bets for this game type
+    let games = state.db.list_saved_games_for_game(gt)?;
+    let bets: Vec<_> = games.into_iter().filter(|g| g.is_bet).collect();
+    if bets.is_empty() { return Ok(vec![]); }
+
+    // Get ALL contests for this game type (id, contest_number, date, numbers)
+    let conn = state.db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, contest_number, contest_date, numbers_sorted_json FROM contests WHERE game_type = ?1 ORDER BY contest_number ASC"
+    ).map_err(|e| e.to_string())?;
+    let all_contests: Vec<(i64, i64, String, Vec<i32>)> = stmt.query_map(rusqlite::params![gt], |row| {
+        let id: i64 = row.get(0)?;
+        let cn: i64 = row.get(1)?;
+        let date: String = row.get(2)?;
+        let json: String = row.get(3)?;
+        let nums: Vec<i32> = serde_json::from_str(&json).unwrap_or_default();
+        Ok((id, cn, date, nums))
+    }).map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+    drop(stmt);
+
+    if all_contests.is_empty() { drop(conn); return Ok(vec![]); }
+
+    // Get lottery config for prize labels
+    let config = registry::get_lottery_config(gt);
+    let pick_count = config.as_ref().map(|c| c.default_pick_count).unwrap_or(6);
+
+    let mut results = vec![];
+
+    for bet in &bets {
+        for (contest_id, cn, date, drawn) in &all_contests {
+            let hits: Vec<i32> = bet.numbers.iter().filter(|n| drawn.contains(n)).copied().collect();
+            let hit_count = hits.len() as i32;
+            let prize = get_prize_label(gt, hit_count, pick_count);
+
+            // Only include results that qualify for a prize (contain "!")
+            if prize.contains('!') {
+                // Try to fetch the prize value from contest_prizes
+                let faixa = get_prize_faixa(gt, hit_count, pick_count);
+                let prize_value: Option<f64> = if let Some(f) = faixa {
+                    conn.query_row(
+                        "SELECT prize_value FROM contest_prizes WHERE contest_id = ?1 AND range_number = ?2",
+                        rusqlite::params![contest_id, f],
+                        |r| r.get(0),
+                    ).ok()
+                } else {
+                    None
+                };
+
+                results.push(HistoricalWinResult {
+                    game_id: bet.id,
+                    game_numbers: bet.numbers.clone(),
+                    contest_number: *cn,
+                    contest_date: date.clone(),
+                    contest_numbers: drawn.clone(),
+                    hits,
+                    hit_count,
+                    prize_label: prize,
+                    prize_value,
+                });
+            }
+        }
+    }
+
+    drop(conn);
+
+    // Sort by hit_count DESC, then contest_number DESC
+    results.sort_by(|a, b| b.hit_count.cmp(&a.hit_count).then(b.contest_number.cmp(&a.contest_number)));
+    Ok(results)
+}
+
+/// Map (game_type, hit_count) to the contest_prizes range_number (faixa).
+fn get_prize_faixa(game_type: &str, hits: i32, pick_count: i32) -> Option<i64> {
+    match game_type {
+        "megasena" | "duplasena" => match hits {
+            6 => Some(1), 5 => Some(2), 4 => Some(3), _ => None,
+        },
+        "lotofacil" => match hits {
+            15 => Some(1), 14 => Some(2), 13 => Some(3), 12 => Some(4), 11 => Some(5), _ => None,
+        },
+        "quina" => match hits {
+            5 => Some(1), 4 => Some(2), 3 => Some(3), 2 => Some(4), _ => None,
+        },
+        "lotomania" => match hits {
+            20 => Some(1), 0 => Some(7),
+            _ if hits >= 15 => Some((20 - hits + 1) as i64),
+            _ => None,
+        },
+        "timemania" => match hits {
+            7 => Some(1), 6 => Some(2), 5 => Some(3), 4 => Some(4), 3 => Some(5), _ => None,
+        },
+        "diadesorte" => match hits {
+            7 => Some(1), 6 => Some(2), 5 => Some(3), 4 => Some(4), _ => None,
+        },
+        _ => {
+            if hits == pick_count { Some(1) }
+            else if hits >= pick_count - 1 { Some(2) }
+            else { None }
+        }
+    }
+}
+
 fn get_prize_label(game_type: &str, hits: i32, pick_count: i32) -> String {
     match game_type {
         "megasena" | "duplasena" => match hits {
@@ -406,13 +542,13 @@ fn format_game_for_clipboard(numbers: Vec<i32>) -> Result<String, String> {
 
 #[tauri::command]
 fn format_all_games_for_clipboard(games: Vec<Vec<i32>>) -> Result<String, String> {
-    let mut lines = vec!["MEUS JOGOS - MEGA-SENA".to_string(), String::new()];
+    let mut lines = vec!["MEUS JOGOS".to_string(), String::new()];
     for (i, game) in games.iter().enumerate() {
         let text = game.iter().map(|n| format!("{:02}", n)).collect::<Vec<_>>().join(", ");
         lines.push(format!("Jogo {}: {}", i + 1, text));
     }
     lines.push(String::new());
-    lines.push("Gerado pelo app MegaLab Desktop".to_string());
+    lines.push("Gerado pelo app LotoLab Core Engine".to_string());
     Ok(lines.join("\n"))
 }
 
@@ -685,15 +821,22 @@ fn export_saved_games_csv(state: State<Arc<AppState>>) -> Result<String, String>
 
 #[tauri::command]
 fn export_full_database_sql(state: State<Arc<AppState>>) -> Result<String, String> {
+    analytics::track_export("sql_backup");
     state.db.export_as_sql()
 }
 
 #[tauri::command]
 fn import_database_sql(state: State<Arc<AppState>>, sql: String) -> Result<String, String> {
+    analytics::track_import("sql_backup");
     state.db.import_from_sql(&sql)?;
     services::stats::recalculate_all_stats(&state.db)?;
     let total = state.db.get_total_contests()?;
     Ok(format!("Importado com sucesso! {} concursos na base.", total))
+}
+
+#[tauri::command]
+fn get_table_counts(state: State<Arc<AppState>>) -> Result<Vec<(String, i64)>, String> {
+    state.db.get_table_counts()
 }
 
 #[tauri::command]
@@ -787,8 +930,8 @@ fn generate_games_pdf_html(state: State<Arc<AppState>>) -> Result<String, String
   .footer { margin-top: 40px; color: #aaa; font-size: 11px; text-align: center; }
   @media print { body { padding: 20px; } }
 </style></head><body>
-<h1>MEUS JOGOS — MEGA-SENA</h1>
-<div class="subtitle">Gerado pelo MegaLab Desktop</div>
+<h1>MEUS JOGOS</h1>
+<div class="subtitle">Gerado pelo LotoLab Core Engine</div>
 "#);
     for (i, g) in games.iter().enumerate() {
         html.push_str(&format!(r#"<div class="game"><div class="game-num">Jogo {}</div><div class="balls">"#, i + 1));
@@ -797,7 +940,7 @@ fn generate_games_pdf_html(state: State<Arc<AppState>>) -> Result<String, String
         }
         html.push_str(&format!(r#"</div><div class="meta">{} · {}</div></div>"#, g.strategy_label, g.created_at.split('T').next().unwrap_or(&g.created_at)));
     }
-    html.push_str(r#"<div class="footer">MegaLab Desktop v1.0.0 — dantetesta.com.br</div></body></html>"#);
+    html.push_str(r#"<div class="footer">LotoLab Core Engine — dantetesta.com.br</div></body></html>"#);
     Ok(html)
 }
 
@@ -899,6 +1042,7 @@ fn factory_reset(state: State<Arc<AppState>>) -> Result<String, String> {
 // ── Multi-game sync ──
 #[tauri::command]
 async fn sync_game(state: State<'_, Arc<AppState>>, game_type: String) -> Result<String, String> {
+    analytics::track_sync(&game_type);
     // Allow parallel syncs for different game types (no global lock)
     let config = registry::get_lottery_config(&game_type)
         .ok_or_else(|| format!("Loteria desconhecida: {}", game_type))?;
@@ -1073,12 +1217,18 @@ fn get_credits_data() -> Result<CreditsData, String> {
 // ═══ LotoCore Engine ═══
 #[tauri::command]
 fn generate_lotocore(state: State<Arc<AppState>>, config: lotocore::LotoCoreConfig) -> Result<lotocore::LotoCoreResult, String> {
-    lotocore::generate_lotocore(&state.db, &config)
+    analytics::track_generate(&config.game_type, config.num_games, &config.mode);
+    if config.xray_enabled {
+        lotocore::generate_lotocore_xray(&state.db, &config)
+    } else {
+        lotocore::generate_lotocore(&state.db, &config)
+    }
 }
 
 // ═══ AI Assistant ═══
 #[tauri::command]
 async fn ai_chat(state: State<'_, Arc<AppState>>, config: ai::AiConfig, messages: Vec<ai::AiMessage>, game_type: Option<String>) -> Result<ai::AiResponse, String> {
+    analytics::track_ai_chat(&config.provider);
     // Build database context for the active lottery
     let gt = game_type.as_deref().unwrap_or("megasena");
     let db_context = ai::build_db_context(&state.db, gt);
@@ -1101,6 +1251,19 @@ async fn ai_chat(state: State<'_, Arc<AppState>>, config: ai::AiConfig, messages
 #[tauri::command]
 fn ai_query_db(state: State<Arc<AppState>>, sql: String) -> Result<String, String> {
     ai::execute_safe_query(&state.db, &sql)
+}
+
+#[tauri::command]
+fn track_page(page: String) {
+    analytics::track_event("page_view", serde_json::json!({
+        "page_title": page,
+        "app_version": "4.0.0",
+    }));
+}
+
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    open::that(&url).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1211,6 +1374,19 @@ fn auto_cleanup(app: tauri::AppHandle) -> Result<datamanager::CleanupResult, Str
     datamanager::auto_cleanup(&app_dir)
 }
 
+// ── Banners / Ads ──
+#[tauri::command]
+async fn get_banners(app: tauri::AppHandle) -> Result<Vec<banners::LocalBanner>, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    banners::load_local_banners(&app_dir)
+}
+
+#[tauri::command]
+async fn sync_banners_cmd(app: tauri::AppHandle) -> Result<Vec<banners::LocalBanner>, String> {
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    banners::sync_banners(&app_dir).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1233,6 +1409,33 @@ pub fn run() {
 
             // No automatic seed data import — user controls data via Settings (sync or import)
 
+            // Auto-import lunar calendar if not already imported
+            {
+                let lunar_count: i64 = database.conn.lock().unwrap()
+                    .query_row("SELECT COUNT(*) FROM lunar_calendar", [], |r| r.get(0))
+                    .unwrap_or(0);
+                if lunar_count == 0 {
+                    if let Ok(resource_path) = app.path().resolve("resources/calendario_lunar_1960_2050.json", tauri::path::BaseDirectory::Resource) {
+                        if resource_path.exists() {
+                            if let Ok(json_data) = std::fs::read_to_string(&resource_path) {
+                                #[derive(serde::Deserialize)]
+                                struct LunarEntry { data: String, idade_lua: f64, iluminacao: f64, fase: String }
+                                if let Ok(entries) = serde_json::from_str::<Vec<LunarEntry>>(&json_data) {
+                                    let conn = database.conn.lock().unwrap();
+                                    for entry in &entries {
+                                        conn.execute(
+                                            "INSERT OR IGNORE INTO lunar_calendar (data, idade_lua, iluminacao, fase) VALUES (?1, ?2, ?3, ?4)",
+                                            rusqlite::params![entry.data, entry.idade_lua, entry.iluminacao, entry.fase]
+                                        ).ok();
+                                    }
+                                    log::info!("Calendario lunar importado: {} dias", entries.len());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             let state = Arc::new(AppState {
                 db: database,
                 is_syncing: AtomicBool::new(false),
@@ -1242,6 +1445,22 @@ pub fn run() {
             });
 
             app.manage(state);
+
+            // Track app open
+            analytics::track_app_open();
+
+            // Sync banners on startup (fire and forget)
+            {
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(async {
+                        let app_dir = app_handle.path().app_data_dir().unwrap_or_default();
+                        banners::sync_banners(&app_dir).await.ok();
+                    });
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -1267,6 +1486,7 @@ pub fn run() {
             export_saved_games_csv,
             export_full_database_sql,
             import_database_sql,
+            get_table_counts,
             download_and_import_sql,
             check_for_new_contests,
             check_game_status,
@@ -1276,6 +1496,7 @@ pub fn run() {
             toggle_bet_game,
             check_bet_results,
             check_bet_results_for_contest,
+            check_historical_wins,
             get_dynamic_dashboard_stats,
             update_bet_price,
             get_contests_count_per_game,
@@ -1295,8 +1516,11 @@ pub fn run() {
             // AI Assistant
             ai_chat,
             ai_query_db,
+            track_page,
+            open_url,
             get_ai_config,
             save_ai_config,
+            ai_save_games,
             // Lunar Calendar
             import_lunar_calendar,
             get_lunar_calendar_count,
@@ -1308,6 +1532,9 @@ pub fn run() {
             backup_database,
             safe_reset,
             auto_cleanup,
+            // Banners / Ads
+            get_banners,
+            sync_banners_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -71,11 +71,14 @@ TABELAS DISPONIVEIS:
 
 GAME TYPES: megasena, lotofacil, quina, lotomania, maismilionaria, duplasena, timemania, diadesorte, supersete
 
-EXEMPLOS DE QUERIES UTEIS COM CALENDARIO LUNAR:
-- Fase lunar de um concurso: SELECT c.contest_number, c.contest_date, l.fase, l.iluminacao FROM contests c JOIN lunar_calendar l ON c.contest_date = l.data WHERE c.game_type = 'megasena' ORDER BY c.contest_number DESC LIMIT 10
-- Contagem de sorteios por fase: SELECT l.fase, COUNT(*) as total FROM contests c JOIN lunar_calendar l ON c.contest_date = l.data WHERE c.game_type = 'megasena' GROUP BY l.fase ORDER BY total DESC
-- Numeros mais sorteados na Lua Cheia: Faca JOIN contests+lunar_calendar, filtre por fase, parse numbers_sorted_json e conte frequencias
+IMPORTANTE SOBRE DATAS: A tabela contests armazena contest_date no formato DD/MM/YYYY (ex: '26/03/2026'). A tabela lunar_calendar usa formato YYYY-MM-DD (ex: '2026-03-26'). Para cruzar, converta a data do concurso:
+- Use: substr(c.contest_date,7,4)||'-'||substr(c.contest_date,4,2)||'-'||substr(c.contest_date,1,2) para converter DD/MM/YYYY para YYYY-MM-DD
+
+EXEMPLOS DE QUERIES COM CALENDARIO LUNAR:
+- Fase lunar de um concurso: SELECT c.contest_number, c.contest_date, l.fase, l.iluminacao FROM contests c JOIN lunar_calendar l ON l.data = substr(c.contest_date,7,4)||'-'||substr(c.contest_date,4,2)||'-'||substr(c.contest_date,1,2) WHERE c.game_type = 'megasena' ORDER BY c.contest_number DESC LIMIT 10
+- Sorteios por fase lunar: SELECT l.fase, COUNT(*) as total FROM contests c JOIN lunar_calendar l ON l.data = substr(c.contest_date,7,4)||'-'||substr(c.contest_date,4,2)||'-'||substr(c.contest_date,1,2) WHERE c.game_type = 'megasena' GROUP BY l.fase ORDER BY total DESC
 - Fase lunar de hoje: SELECT fase, iluminacao FROM lunar_calendar WHERE data = date('now')
+- Concursos na Lua Cheia: SELECT c.contest_number, c.contest_date, c.numbers_sorted_text FROM contests c JOIN lunar_calendar l ON l.data = substr(c.contest_date,7,4)||'-'||substr(c.contest_date,4,2)||'-'||substr(c.contest_date,1,2) WHERE c.game_type = 'megasena' AND l.fase = 'Lua Cheia' ORDER BY c.contest_number DESC LIMIT 20
 
 REGRAS DE SQL:
 - Apenas SELECT. Nada de INSERT/UPDATE/DELETE/DROP.
@@ -102,6 +105,38 @@ Se o usuario pedir para gerar jogos ou configurar filtros, retorne um bloco JSON
 }
 ```
 
+## SALVAR JOGOS
+Quando o usuario pedir para gerar jogos ou sugestoes de numeros, alem de mostrar os jogos na resposta, inclua um bloco JSON especial para salvar:
+```json
+{"save_games": [{"numbers": [1,2,3,4,5,6], "game_type": "megasena", "strategy_label": "Sugestao IA"}]}
+```
+O sistema oferecera ao usuario a opcao de salvar esses jogos em "Meus Jogos".
+IMPORTANTE: Os numeros devem respeitar as regras de cada loteria (quantidade, faixa). Sempre inclua save_games quando gerar jogos.
+
+## ESPECIALISTA EM ALGORITMOS
+Voce e um especialista em estatistica probabilistica e matematica avancada. Quando o usuario pedir sugestoes de numeros, voce pode:
+- Calcular combinacoes usando os algoritmos do LotoCore: frequencia, atraso, bayesiano, markov, entropia
+- Analisar padroes historicos para identificar tendencias
+- Usar analise de distribuicao gaussiana, desvio padrao e coeficiente de variacao
+- Cruzar multiplos fatores: frequencia + atraso + paridade + faixas + soma
+- Explicar o raciocinio matematico por tras de cada sugestao
+- Quando sugerir numeros, usar os dados reais do banco para justificar cada escolha
+
+FORMATO DE SUGESTAO:
+Ao sugerir jogos, apresente cada jogo com:
+1. Os numeros sugeridos
+2. Score estimado (com base na analise)
+3. Justificativa: por que esses numeros? quais algoritmos apoiam?
+4. Inclua o bloco save_games para o usuario poder salvar
+
+Exemplo de raciocinio:
+"Com base nos ultimos 100 concursos da Mega-Sena:
+- Numeros 10, 33, 38 estao entre os mais frequentes (top 15)
+- Numeros 27, 46 estao atrasados ha 15+ concursos (tendencia de retorno)
+- O 53 tem alta pontuacao bayesiana (recencia + historico)
+- Soma total: 207 (dentro da faixa ideal 170-220)
+- Paridade: 3 pares / 3 impares (equilibrio perfeito)"
+
 ## REGRAS INVIOLAVEIS
 1. NUNCA prometa premios, ganhos ou resultados. Loteria e jogo de azar e nenhuma analise garante vitoria.
 2. NUNCA responda sobre: sexo, drogas, programacao, hacking, ofensas, discriminacao, legislacao ou qualquer tema fora do universo loteria/matematica/estatistica/jogos/sorte/numeros.
@@ -110,6 +145,15 @@ Se o usuario pedir para gerar jogos ou configurar filtros, retorne um bloco JSON
 5. Numerologia/astrologia: aceite como filtro criativo, mas deixe claro que nao tem base cientifica comprovada — e apenas uma forma divertida de personalizar escolhas.
 6. NUNCA invente dados. Use APENAS os dados fornecidos pelo banco. Se nao tiver dados suficientes, diga: "Nao tenho dados suficientes para essa analise. Que tal sincronizar os concursos nas Configuracoes?"
 7. Se o usuario for vago demais, faca perguntas: "Qual loteria voce quer analisar?", "Quantos jogos quer gerar?", "Prefere numeros quentes ou frios?"
+
+## GRAFICOS VISUAIS
+Voce pode gerar graficos visuais! Quando fizer sentido (frequencias, distribuicoes, tendencias, comparacoes), inclua um bloco especial na resposta:
+```chart
+{"type": "bar", "title": "Frequencia dos Numeros", "data": [{"name": "10", "value": 352}, {"name": "53", "value": 341}]}
+```
+Tipos disponiveis: bar, pie, line
+O sistema renderiza automaticamente o grafico. Use para mostrar frequencias, distribuicoes, tendencias, comparacoes.
+Se o usuario pedir analise visual ou grafico, use esse formato. Pergunte ao usuario que tipo de grafico prefere se nao ficar claro.
 
 ## EXCECOES PERMITIDAS
 - Numerologia: aceitar numeros da sorte, data de nascimento, signos como filtros criativos
@@ -232,7 +276,7 @@ pub fn build_db_context(db: &Database, game_type: &str) -> String {
         // Lunar phases of last 5 contests
         ctx.push_str("Fases lunares dos ultimos 5 concursos:\n");
         if let Ok(mut stmt) = conn.prepare(
-            "SELECT c.contest_number, c.contest_date, COALESCE(l.fase, '?') FROM contests c LEFT JOIN lunar_calendar l ON c.contest_date = l.data WHERE c.game_type = ?1 ORDER BY c.contest_number DESC LIMIT 5"
+            "SELECT c.contest_number, c.contest_date, COALESCE(l.fase, '?') FROM contests c LEFT JOIN lunar_calendar l ON l.data = substr(c.contest_date,7,4)||'-'||substr(c.contest_date,4,2)||'-'||substr(c.contest_date,1,2) WHERE c.game_type = ?1 ORDER BY c.contest_number DESC LIMIT 5"
         ) {
             if let Ok(rows) = stmt.query_map(rusqlite::params![game_type], |r| {
                 Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
@@ -300,7 +344,7 @@ struct OpenAiRequest {
     model: String,
     messages: Vec<OpenAiMessage>,
     temperature: f64,
-    max_tokens: u32,
+    max_completion_tokens: u32,
 }
 
 #[derive(Serialize)]
@@ -442,7 +486,7 @@ async fn chat_openai(
         model,
         messages: api_messages,
         temperature: 0.7,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
     };
 
     let client = reqwest::Client::new();
@@ -746,6 +790,7 @@ fn is_engine_config(json_str: &str) -> bool {
             || val.get("game_type").is_some()
             || val.get("filters").is_some()
             || val.get("pick_count").is_some()
+            || val.get("save_games").is_some()
     } else {
         false
     }

@@ -23,12 +23,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Windows installer
+      - name: Build Windows
         run: npx tauri build
         env:
           CI: "true"
 
-      - name: Upload Windows NSIS installer
+      - name: Upload Windows NSIS
         uses: actions/upload-artifact@v4
         with:
           name: LotoLab-Windows-Setup
@@ -39,3 +39,63 @@ jobs:
         with:
           name: LotoLab-Windows-MSI
           path: src-tauri/target/release/bundle/msi/*.msi
+
+  build-macos-silicon:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS Silicon
+        run: npx tauri build --target aarch64-apple-darwin
+        env:
+          CI: "true"
+
+      - name: Upload macOS Silicon DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: LotoLab-macOS-Silicon
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+
+  build-macos-intel:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS Intel
+        run: npx tauri build --target x86_64-apple-darwin
+        env:
+          CI: "true"
+
+      - name: Upload macOS Intel DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: LotoLab-macOS-Intel
+          path: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg

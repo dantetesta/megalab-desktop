@@ -332,3 +332,296 @@ impl DynamicDashboardStats {
         }
     }
 }
+
+// ── SuperLab ──
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SuperLabFilterParams {
+    pub game_type: String,
+    pub count: i32,
+    pub sum_min: Option<i32>,
+    pub sum_max: Option<i32>,
+    pub even_min: Option<i32>,
+    pub even_max: Option<i32>,
+    pub repeats_max: Option<i32>,
+    pub strategy_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BacktestHit {
+    pub contest_number: i64,
+    pub contest_date: String,
+    pub hits: Vec<i32>,
+    pub hit_count: i32,
+    pub prize_label: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BacktestSummary {
+    pub game: Vec<i32>,
+    pub total_contests: i64,
+    pub hits: Vec<BacktestHit>,
+    pub max_hits: i32,
+    pub count_4plus: i32,
+    pub count_5plus: i32,
+    pub count_6plus: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CooccurrenceEntry {
+    pub num_a: i32,
+    pub num_b: i32,
+    pub frequency: i32,
+    pub pct: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PortfolioScore {
+    pub total_games: i32,
+    pub distinct_numbers: i32,
+    pub pool_size: i32,
+    pub coverage_pct: f64,
+    pub avg_overlap: f64,
+    pub diversity_score: f64,
+    pub quality_label: String,
+}
+
+// Phase 2: Advanced Analytics
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NumberAnalytics {
+    pub number: i32,
+    pub frequency: i32,
+    pub freq_pct: f64,
+    pub delay: i32,
+    pub avg_gap: f64,
+    pub recent_30: i32,
+    pub recent_100: i32,
+    pub score: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AdvancedAnalytics {
+    pub game_type: String,
+    pub total_contests: i64,
+    pub window: i64,
+    pub numbers: Vec<NumberAnalytics>,
+    pub sum_avg: f64,
+    pub even_avg: f64,
+    pub entropy: f64,
+    pub top_hot: Vec<i32>,
+    pub top_cold: Vec<i32>,
+    pub top_pairs: Vec<CooccurrenceEntry>,
+    pub insights: Vec<String>,
+}
+
+// Phase 4: Monte Carlo
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MonteCarloResult {
+    pub game: Vec<i32>,
+    pub iterations: i32,
+    pub min_prize_hits: i32,
+    pub hit_counts: Vec<i32>,
+    pub hit_pcts: Vec<f64>,
+    pub expected_contests_to_prize: f64,
+}
+
+// Phase 5: Coverage
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SetCoverResult {
+    pub tickets: Vec<Vec<i32>>,
+    pub covered_pairs: usize,
+    pub total_pairs: usize,
+    pub coverage_pct: f64,
+}
+
+// Phase 3: Strategy persistence
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SuperLabStrategy {
+    pub id: i64,
+    pub name: String,
+    pub game_type: String,
+    pub strategy_type: String,
+    pub config_json: String,
+    pub games_json: String,
+    pub notes: Option<String>,
+    pub score_json: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SuperLabSaveStrategyParams {
+    pub name: String,
+    pub game_type: String,
+    pub strategy_type: String,
+    pub config_json: String,
+    pub games: Vec<Vec<i32>>,
+    pub notes: Option<String>,
+}
+
+// Phase 7: Multi-objective optimizer
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OptimizedPortfolio {
+    pub rank: usize,
+    pub games: Vec<Vec<i32>>,
+    pub frequency_score: f64,
+    pub diversity_score: f64,
+    pub coverage_score: f64,
+    pub composite_score: f64,
+    pub is_pareto: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MultiObjectiveResult {
+    pub portfolios: Vec<OptimizedPortfolio>,
+    pub pareto_count: usize,
+    pub total_candidates: usize,
+    pub w_frequency: f64,
+    pub w_diversity: f64,
+    pub w_coverage: f64,
+}
+
+// ── SuperLab: Distribution Analysis ─────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MolduraMioloStats {
+    pub avg_moldura: f64,
+    pub avg_miolo: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SumHistogramBucket {
+    pub range_label: String,
+    pub count: i32,
+    pub pct: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RepeatsBucket {
+    pub repeats: i32,
+    pub count: i32,
+    pub pct: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DistributionAnalysis {
+    pub game_type: String,
+    pub total_contests: i64,
+    pub window: i64,
+    pub range_01_10: f64,
+    pub range_11_20: f64,
+    pub range_21_30: f64,
+    pub range_31_40: f64,
+    pub range_41_50: f64,
+    pub range_51_60: f64,
+    pub avg_even: f64,
+    pub avg_odd: f64,
+    pub avg_primes: f64,
+    pub avg_fibonacci: f64,
+    pub avg_sum: f64,
+    pub sum_histogram: Vec<SumHistogramBucket>,
+    pub repeats_distribution: Vec<RepeatsBucket>,
+    pub avg_repeats_from_last: f64,
+    pub moldura_miolo: Option<MolduraMioloStats>,
+}
+
+// ── SuperLab: Triple Cooccurrence ────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TripleEntry {
+    pub num_a: i32,
+    pub num_b: i32,
+    pub num_c: i32,
+    pub frequency: i32,
+    pub pct: f64,
+}
+
+// ── SuperLab: Period Comparison ──────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NumberDelta {
+    pub number: i32,
+    pub freq_delta: f64,
+    pub delay_delta: i32,
+    pub score_delta: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PeriodCompareResult {
+    pub window_a: i64,
+    pub window_b: i64,
+    pub top_gainers: Vec<NumberDelta>,
+    pub top_losers: Vec<NumberDelta>,
+    pub deltas: Vec<NumberDelta>,
+}
+
+// ── SuperLab: Genetic Optimizer ──────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GeneticResult {
+    pub best_portfolio: Vec<Vec<i32>>,
+    pub score_history: Vec<f64>,
+    pub final_score: f64,
+    pub frequency_score: f64,
+    pub diversity_score: f64,
+    pub coverage_score: f64,
+    pub generations_run: usize,
+}
+
+// ── SuperLab: Simulated Annealing ────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SAResult {
+    pub best_portfolio: Vec<Vec<i32>>,
+    pub initial_score: f64,
+    pub final_score: f64,
+    pub iterations_run: usize,
+    pub improvements: usize,
+    pub frequency_score: f64,
+    pub diversity_score: f64,
+    pub coverage_score: f64,
+}
+
+// ── SuperLab: Redundancy Reducer ─────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RedundancyResult {
+    pub original_count: usize,
+    pub reduced_count: usize,
+    pub removed_count: usize,
+    pub portfolio: Vec<Vec<i32>>,
+    pub avg_similarity_before: f64,
+    pub avg_similarity_after: f64,
+}
+
+// ── SuperLab: Probability Engine ─────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PrizeTier {
+    pub name: String,
+    pub hits_required: i32,
+    pub probability: f64,
+    pub one_in: f64,
+    pub expected_tickets_to_win: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProbabilityResult {
+    pub game_type: String,
+    pub pick_count: i32,
+    pub pool_size: i32,
+    pub total_combinations: f64,
+    pub tiers: Vec<PrizeTier>,
+}
+
+// ── SuperLab: Portfolio Comparison ───────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StrategyCompareEntry {
+    pub name: String,
+    pub game: Vec<i32>,
+    pub total_contests: i64,
+    pub prize_count: i32,
+    pub prize_rate_pct: f64,
+    pub max_hits: i32,
+    pub count_4plus: i32,
+    pub count_5plus: i32,
+    pub count_6plus: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PortfolioCompareResult {
+    pub strategies: Vec<StrategyCompareEntry>,
+    pub best_by_prize_rate_idx: usize,
+    pub best_by_max_hits_idx: usize,
+}

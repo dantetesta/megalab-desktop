@@ -1,3 +1,4 @@
+import React from 'react'
 import { type GameAnalysis } from '@/lib/tauri'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import NumberBall from '@/components/NumberBall'
@@ -143,11 +144,11 @@ export default function GameXray({ analysis, compact = false, gameType }: Props)
 
 function ScoreCard({ label, value, sub, color }: { label: string; value: string; sub: string; color?: string }) {
   return (
-    <Card>
+    <Card style={color ? { '--c': color } as React.CSSProperties : undefined}>
       <CardContent className="p-2.5 text-center">
         <p className="text-[9px] font-semibold text-muted-foreground mb-1">{label}</p>
-        <p className="text-xl font-extrabold leading-none" style={{ color: color || 'var(--foreground)' }}>{value}</p>
-        <p className="text-[9px] font-semibold mt-0.5" style={{ color: color || 'var(--muted-foreground)' }}>{sub}</p>
+        <p className={cn('text-xl font-extrabold leading-none', color ? '[color:var(--c)]' : 'text-foreground')}>{value}</p>
+        <p className={cn('text-[9px] font-semibold mt-0.5', color ? '[color:var(--c)]' : 'text-muted-foreground')}>{sub}</p>
       </CardContent>
     </Card>
   )

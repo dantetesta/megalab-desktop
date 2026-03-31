@@ -14,6 +14,8 @@ import Creditos from '@/pages/Creditos'
 import Settings from '@/pages/Settings'
 import LotoCore from '@/pages/LotoCore'
 import Assistente from '@/pages/Assistente'
+import SuperLab from '@/pages/SuperLab'
+import Desdobramento from '@/pages/Desdobramento'
 
 function App() {
   const { currentPage } = useAppStore()
@@ -71,7 +73,9 @@ function App() {
         case 'gerador': return <Gerador />
         case 'assistente': return <Assistente />
         case 'meus_jogos': return <MeusJogos />
-        case 'creditos': return <Creditos />
+        case 'superlab':      return <SuperLab />
+        case 'desdobramento': return <Desdobramento />
+        case 'creditos':      return <Creditos />
         case 'settings': return <Settings />
         default: return <Dashboard />
       }
@@ -100,7 +104,7 @@ function App() {
           </button>
         )}
 
-        <div key={currentPage} className="absolute inset-0 overflow-y-auto" style={needsPadding ? { padding: 32 } : undefined}>
+        <div key={currentPage} className={`absolute inset-0 overflow-y-auto${needsPadding ? ' p-8' : ''}`}>
           {renderPage()}
         </div>
       </div>

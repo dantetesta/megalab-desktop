@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { api, type LotteryConfig } from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { Loader2, CheckCircle, AlertCircle, Download } from 'lucide-react'
@@ -145,15 +145,14 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   onClick={() => toggleSelection(item.game_type)}
                   className={cn(
                     'flex items-center gap-2.5 px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-150 text-left border-2',
-                    isSelected ? '' : 'border-border bg-card',
+                    isSelected ? 'lottery-select-active' : 'border-border bg-card',
                   )}
-                  style={isSelected ? { borderColor: color, background: `color-mix(in srgb, ${color} 8%, var(--card))` } : undefined}
+                  style={{ '--c': color } as React.CSSProperties}
                 >
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
+                  <div className="w-3 h-3 rounded-full shrink-0 [background:var(--c)]" />
                   <span className="text-[13px] font-bold text-foreground flex-1">{item.label}</span>
                   <div
-                    className={cn('w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all', isSelected ? 'lottery-btn' : 'border-2 border-border')}
-                    style={isSelected ? { background: color } : undefined}
+                    className={cn('w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all', isSelected ? 'lottery-btn [background:var(--c)]' : 'border-2 border-border')}
                   >
                     {isSelected && (
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -217,26 +216,26 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             return (
               <Card
                 key={gt}
-                className={cn('transition-all', status === 'error' && 'border-destructive')}
-                style={status === 'done' ? { borderColor: color } : undefined}
+                className={cn('transition-all', status === 'error' && 'border-destructive', status === 'done' && '[border-color:var(--c)]')}
+                style={{ '--c': color } as React.CSSProperties}
               >
                 <CardContent className="px-4 py-3 flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0 [background:var(--c)]" />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-bold text-foreground">{item.label}</div>
                     {state?.message && (
                       <div className={cn(
                         'text-[11px] mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap',
-                        status === 'error' ? 'text-destructive' : status === 'done' ? 'font-semibold lottery-text-on-tint' : 'text-muted-foreground',
-                      )} style={status === 'done' ? { color } : undefined}>
+                        status === 'error' ? 'text-destructive' : status === 'done' ? 'font-semibold [color:var(--c)]' : 'text-muted-foreground',
+                      )}>
                         {state.message}
                       </div>
                     )}
                   </div>
                   <div className="shrink-0">
                     {status === 'pending' && <div className="w-5 h-5 rounded-full border-2 border-border" />}
-                    {status === 'downloading' && <Loader2 size={20} className="animate-spin" style={{ color }} />}
-                    {status === 'done' && <CheckCircle size={20} style={{ color }} />}
+                    {status === 'downloading' && <Loader2 size={20} className="animate-spin [color:var(--c)]" />}
+                    {status === 'done' && <CheckCircle size={20} className="[color:var(--c)]" />}
                     {status === 'error' && <AlertCircle size={20} className="text-destructive" />}
                   </div>
                 </CardContent>

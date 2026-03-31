@@ -9,6 +9,7 @@ pub mod lotocore;
 mod models;
 mod registry;
 mod services;
+mod superlab;
 
 use db::Database;
 use models::*;
@@ -187,10 +188,11 @@ fn generate_game(state: State<Arc<AppState>>, params: GenerateGameParams) -> Res
 }
 
 #[tauri::command]
-fn generate_portfolio(state: State<Arc<AppState>>, count: i32, game_type: Option<String>) -> Result<Vec<GeneratedGame>, String> {
+fn generate_portfolio(state: State<Arc<AppState>>, count: i32, game_type: Option<String>, pick_count: Option<i32>) -> Result<Vec<GeneratedGame>, String> {
     let gt = game_type.as_deref().unwrap_or("megasena");
     let config = registry::get_lottery_config(gt).unwrap_or_else(|| registry::get_lottery_config("megasena").unwrap());
-    let games = generators::generate_portfolio(&state.db, gt, count, config.numbers_pool_size, config.default_pick_count)?;
+    let pick = pick_count.unwrap_or(config.default_pick_count);
+    let games = generators::generate_portfolio(&state.db, gt, count, config.numbers_pool_size, pick)?;
     let mut rng = rand::thread_rng();
     let mut result = vec![];
     for game in games {
@@ -369,14 +371,14 @@ fn check_bet_results_for_contest(state: State<Arc<AppState>>, game_type: Option<
     Ok(results)
 }
 
-// ── Check historical wins for all bet games across ALL contests ──
+// ── Check historical wins for ALL saved games across ALL contests ──
 #[tauri::command]
 fn check_historical_wins(state: State<Arc<AppState>>, game_type: String) -> Result<Vec<HistoricalWinResult>, String> {
     let gt = game_type.as_str();
 
-    // Get only bets for this game type
+    // Get ALL saved games for this game type (not just bets — allows "what if" analysis)
     let games = state.db.list_saved_games_for_game(gt)?;
-    let bets: Vec<_> = games.into_iter().filter(|g| g.is_bet).collect();
+    let bets = games;
     if bets.is_empty() { return Ok(vec![]); }
 
     // Get ALL contests for this game type (id, contest_number, date, numbers)
@@ -1387,6 +1389,155 @@ async fn sync_banners_cmd(app: tauri::AppHandle) -> Result<Vec<banners::LocalBan
     banners::sync_banners(&app_dir).await
 }
 
+// ── SuperLab commands ──
+#[tauri::command]
+fn superlab_backtest_games(state: State<Arc<AppState>>, games: Vec<Vec<i32>>, game_type: String) -> Result<Vec<BacktestSummary>, String> {
+    superlab::backtest_games(&state.db, &games, &game_type)
+}
+
+#[tauri::command]
+fn superlab_get_cooccurrence(state: State<Arc<AppState>>, game_type: String, top_n: Option<usize>) -> Result<Vec<CooccurrenceEntry>, String> {
+    superlab::get_cooccurrence(&state.db, &game_type, top_n.unwrap_or(200))
+}
+
+#[tauri::command]
+fn superlab_generate_filtered(state: State<Arc<AppState>>, params: SuperLabFilterParams) -> Result<Vec<Vec<i32>>, String> {
+    superlab::generate_filtered(&state.db, &params)
+}
+
+#[tauri::command]
+fn superlab_score_portfolio(_state: State<Arc<AppState>>, games: Vec<Vec<i32>>, game_type: String) -> Result<PortfolioScore, String> {
+    Ok(superlab::score_portfolio(&games, &game_type))
+}
+
+#[tauri::command]
+fn superlab_advanced_analytics(state: State<Arc<AppState>>, game_type: String, last_n: Option<usize>) -> Result<AdvancedAnalytics, String> {
+    superlab::advanced_analytics(&state.db, &game_type, last_n)
+}
+
+#[tauri::command]
+fn superlab_monte_carlo(state: State<Arc<AppState>>, game: Vec<i32>, game_type: String, iterations: Option<usize>) -> Result<MonteCarloResult, String> {
+    superlab::monte_carlo(&game, &game_type, iterations.unwrap_or(10_000))
+}
+
+#[tauri::command]
+fn superlab_greedy_cover(state: State<Arc<AppState>>, base_numbers: Vec<i32>, game_type: String) -> Result<SetCoverResult, String> {
+    superlab::greedy_set_cover(&base_numbers, &game_type)
+}
+
+#[tauri::command]
+fn superlab_generate_diverse(state: State<Arc<AppState>>, game_type: String, count: i32, min_distance: Option<f64>) -> Result<Vec<Vec<i32>>, String> {
+    superlab::generate_diverse_portfolio(&state.db, &game_type, count, min_distance)
+}
+
+#[tauri::command]
+fn superlab_save_strategy(state: State<Arc<AppState>>, params: SuperLabSaveStrategyParams) -> Result<i64, String> {
+    superlab::save_strategy(&state.db, &params)
+}
+
+#[tauri::command]
+fn superlab_list_strategies(state: State<Arc<AppState>>, game_type: String) -> Result<Vec<SuperLabStrategy>, String> {
+    superlab::list_strategies(&state.db, &game_type)
+}
+
+#[tauri::command]
+fn superlab_delete_strategy(state: State<Arc<AppState>>, id: i64) -> Result<(), String> {
+    superlab::delete_strategy(&state.db, id)
+}
+
+#[tauri::command]
+fn superlab_multi_objective(
+    state: State<Arc<AppState>>,
+    game_type: String,
+    portfolio_size: Option<i32>,
+    candidates: Option<usize>,
+    w_frequency: Option<f64>,
+    w_diversity: Option<f64>,
+    w_coverage: Option<f64>,
+) -> Result<MultiObjectiveResult, String> {
+    superlab::multi_objective_optimize(
+        &state.db,
+        &game_type,
+        portfolio_size.unwrap_or(5),
+        candidates.unwrap_or(200),
+        w_frequency.unwrap_or(1.0),
+        w_diversity.unwrap_or(1.0),
+        w_coverage.unwrap_or(1.0),
+    )
+}
+
+#[tauri::command]
+fn superlab_distribution_analysis(state: State<Arc<AppState>>, game_type: String, last_n: Option<usize>) -> Result<DistributionAnalysis, String> {
+    superlab::distribution_analysis(&state.db, &game_type, last_n)
+}
+
+#[tauri::command]
+fn superlab_triple_cooccurrence(state: State<Arc<AppState>>, game_type: String, top_n: Option<usize>, last_n: Option<usize>) -> Result<Vec<TripleEntry>, String> {
+    superlab::triple_cooccurrence(&state.db, &game_type, top_n.unwrap_or(50), last_n)
+}
+
+#[tauri::command]
+fn superlab_period_compare(state: State<Arc<AppState>>, game_type: String, window_a: Option<usize>, window_b: Option<usize>) -> Result<PeriodCompareResult, String> {
+    superlab::period_compare(&state.db, &game_type, window_a.unwrap_or(100), window_b.unwrap_or(500))
+}
+
+#[tauri::command]
+fn superlab_genetic_optimize(
+    state: State<Arc<AppState>>,
+    game_type: String,
+    portfolio_size: Option<i32>,
+    pop_size: Option<usize>,
+    generations: Option<usize>,
+    w_frequency: Option<f64>,
+    w_diversity: Option<f64>,
+    w_coverage: Option<f64>,
+) -> Result<GeneticResult, String> {
+    superlab::genetic_optimize(
+        &state.db, &game_type,
+        portfolio_size.unwrap_or(5),
+        pop_size.unwrap_or(30),
+        generations.unwrap_or(50),
+        w_frequency.unwrap_or(1.0),
+        w_diversity.unwrap_or(1.0),
+        w_coverage.unwrap_or(1.0),
+    )
+}
+
+#[tauri::command]
+fn superlab_simulated_annealing(
+    state: State<Arc<AppState>>,
+    game_type: String,
+    portfolio_size: Option<i32>,
+    max_iterations: Option<usize>,
+    w_frequency: Option<f64>,
+    w_diversity: Option<f64>,
+    w_coverage: Option<f64>,
+) -> Result<SAResult, String> {
+    superlab::simulated_annealing(
+        &state.db, &game_type,
+        portfolio_size.unwrap_or(5),
+        max_iterations.unwrap_or(2000),
+        w_frequency.unwrap_or(1.0),
+        w_diversity.unwrap_or(1.0),
+        w_coverage.unwrap_or(1.0),
+    )
+}
+
+#[tauri::command]
+fn superlab_reduce_redundancy(_state: State<Arc<AppState>>, games: Vec<Vec<i32>>, max_similarity: Option<f64>) -> Result<RedundancyResult, String> {
+    Ok(superlab::reduce_redundancy(games, max_similarity.unwrap_or(0.5)))
+}
+
+#[tauri::command]
+fn superlab_probability_engine(_state: State<Arc<AppState>>, game_type: String, pick_count: Option<i32>) -> Result<ProbabilityResult, String> {
+    superlab::probability_engine(&game_type, pick_count)
+}
+
+#[tauri::command]
+fn superlab_compare_portfolios(state: State<Arc<AppState>>, games: Vec<Vec<i32>>, names: Vec<String>, game_type: String) -> Result<PortfolioCompareResult, String> {
+    superlab::compare_portfolios(&state.db, &games, &names, &game_type)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1409,32 +1560,7 @@ pub fn run() {
 
             // No automatic seed data import — user controls data via Settings (sync or import)
 
-            // Auto-import lunar calendar if not already imported
-            {
-                let lunar_count: i64 = database.conn.lock().unwrap()
-                    .query_row("SELECT COUNT(*) FROM lunar_calendar", [], |r| r.get(0))
-                    .unwrap_or(0);
-                if lunar_count == 0 {
-                    if let Ok(resource_path) = app.path().resolve("resources/calendario_lunar_1960_2050.json", tauri::path::BaseDirectory::Resource) {
-                        if resource_path.exists() {
-                            if let Ok(json_data) = std::fs::read_to_string(&resource_path) {
-                                #[derive(serde::Deserialize)]
-                                struct LunarEntry { data: String, idade_lua: f64, iluminacao: f64, fase: String }
-                                if let Ok(entries) = serde_json::from_str::<Vec<LunarEntry>>(&json_data) {
-                                    let conn = database.conn.lock().unwrap();
-                                    for entry in &entries {
-                                        conn.execute(
-                                            "INSERT OR IGNORE INTO lunar_calendar (data, idade_lua, iluminacao, fase) VALUES (?1, ?2, ?3, ?4)",
-                                            rusqlite::params![entry.data, entry.idade_lua, entry.iluminacao, entry.fase]
-                                        ).ok();
-                                    }
-                                    log::info!("Calendario lunar importado: {} dias", entries.len());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // Lunar calendar import is deferred to background thread (see below)
 
             let state = Arc::new(AppState {
                 db: database,
@@ -1444,12 +1570,15 @@ pub fn run() {
                 sync_message: std::sync::Mutex::new(String::new()),
             });
 
+            // Clone state for background lunar import before managing
+            let state_for_lunar = state.clone();
+
             app.manage(state);
 
             // Track app open
             analytics::track_app_open();
 
-            // Sync banners on startup (fire and forget)
+            // Sync banners on startup (fire and forget — background thread)
             {
                 let app_handle = app.handle().clone();
                 std::thread::spawn(move || {
@@ -1458,6 +1587,37 @@ pub fn run() {
                         let app_dir = app_handle.path().app_data_dir().unwrap_or_default();
                         banners::sync_banners(&app_dir).await.ok();
                     });
+                });
+            }
+
+            // Auto-import lunar calendar in background thread (fire and forget)
+            {
+                let app_handle = app.handle().clone();
+                let state_clone = state_for_lunar;
+                std::thread::spawn(move || {
+                    let lunar_count: i64 = state_clone.db.conn.lock().unwrap()
+                        .query_row("SELECT COUNT(*) FROM lunar_calendar", [], |r| r.get(0))
+                        .unwrap_or(0);
+                    if lunar_count == 0 {
+                        if let Ok(resource_path) = app_handle.path().resolve("resources/calendario_lunar_1960_2050.json", tauri::path::BaseDirectory::Resource) {
+                            if resource_path.exists() {
+                                if let Ok(json_data) = std::fs::read_to_string(&resource_path) {
+                                    #[derive(serde::Deserialize)]
+                                    struct LunarEntry { data: String, idade_lua: f64, iluminacao: f64, fase: String }
+                                    if let Ok(entries) = serde_json::from_str::<Vec<LunarEntry>>(&json_data) {
+                                        let conn = state_clone.db.conn.lock().unwrap();
+                                        for entry in &entries {
+                                            conn.execute(
+                                                "INSERT OR IGNORE INTO lunar_calendar (data, idade_lua, iluminacao, fase) VALUES (?1, ?2, ?3, ?4)",
+                                                rusqlite::params![entry.data, entry.idade_lua, entry.iluminacao, entry.fase]
+                                            ).ok();
+                                        }
+                                        log::info!("Calendario lunar importado em background: {} dias", entries.len());
+                                    }
+                                }
+                            }
+                        }
+                    }
                 });
             }
 
@@ -1535,6 +1695,27 @@ pub fn run() {
             // Banners / Ads
             get_banners,
             sync_banners_cmd,
+            // SuperLab
+            superlab_backtest_games,
+            superlab_get_cooccurrence,
+            superlab_generate_filtered,
+            superlab_score_portfolio,
+            superlab_advanced_analytics,
+            superlab_monte_carlo,
+            superlab_greedy_cover,
+            superlab_generate_diverse,
+            superlab_save_strategy,
+            superlab_list_strategies,
+            superlab_delete_strategy,
+            superlab_multi_objective,
+            superlab_distribution_analysis,
+            superlab_triple_cooccurrence,
+            superlab_period_compare,
+            superlab_genetic_optimize,
+            superlab_simulated_annealing,
+            superlab_reduce_redundancy,
+            superlab_probability_engine,
+            superlab_compare_portfolios,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

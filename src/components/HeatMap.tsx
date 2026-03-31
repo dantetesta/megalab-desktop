@@ -147,11 +147,10 @@ function NumberDetailPanel({ number, allData, maxFreq, minFreq, onClose }: {
         <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-3.5">
             <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-[22px] font-extrabold font-mono"
+              className="w-14 h-14 rounded-full flex items-center justify-center text-[22px] font-extrabold font-mono shadow-[inset_0_3px_6px_rgba(255,255,255,0.3),inset_0_-3px_6px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.3)]"
               style={{
                 background: getHeatColor(intensity),
                 color: intensity > 0.5 ? '#1a1a1a' : '#fff',
-                boxShadow: 'inset 0 3px 6px rgba(255,255,255,0.3), inset 0 -3px 6px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3)',
               }}
             >
               {String(number.number).padStart(2, '0')}
@@ -192,10 +191,7 @@ function NumberDetailPanel({ number, allData, maxFreq, minFreq, onClose }: {
               <div className="h-3 rounded-md bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-md transition-all duration-500"
-                  style={{
-                    width: `${(intensity * 100).toFixed(1)}%`,
-                    background: `linear-gradient(90deg, ${getHeatColor(0)}, ${getHeatColor(intensity)})`,
-                  }}
+                  style={{ width: `${(intensity * 100).toFixed(1)}%`, background: `linear-gradient(90deg, ${getHeatColor(0)}, ${getHeatColor(intensity)})` }}
                 />
               </div>
               <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
@@ -228,7 +224,7 @@ function DetailCard({ label, value, sub, color }: { label: string; value: string
     <Card>
       <CardContent className="p-4 text-center">
         <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">{label}</p>
-        <p className="text-[26px] font-extrabold leading-none" style={{ color: color || 'var(--foreground)' }}>{value}</p>
+        <p className={cn('text-[26px] font-extrabold leading-none', !color && 'text-foreground')} style={color ? { color } : undefined}>{value}</p>
         <p className="text-[10px] text-muted-foreground mt-1 font-medium">{sub}</p>
       </CardContent>
     </Card>
@@ -239,7 +235,7 @@ function StatusRow({ label, value, color }: { label: string; value: string; colo
   return (
     <div className="flex justify-between items-center">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-[13px] font-bold" style={{ color: color || 'var(--foreground)' }}>{value}</span>
+      <span className={cn('text-[13px] font-bold', !color && 'text-foreground')} style={color ? { color } : undefined}>{value}</span>
     </div>
   )
 }

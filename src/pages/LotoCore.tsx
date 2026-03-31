@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { api, type LotoCoreConfig, type LotoCoreResult, type LotoCoreGame, type AlgorithmWeights, type EnabledAlgorithms, type AlgorithmScores, type XRayStep, type XRayPipelineSummary } from '@/lib/tauri'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/stores/appStore'
@@ -239,6 +239,9 @@ const PRESETS: Preset[] = [
     }},
 ]
 
+// ═══ Mode labels in Portuguese ═══
+const MODE_LABELS: Record<string, string> = { combined: 'Combinado', weighted: 'Ponderado', single: 'Individual' }
+
 // ═══ Main Component ═══
 
 export default function LotoCore() {
@@ -248,6 +251,7 @@ export default function LotoCore() {
 
   // Config state
   const [numGames, setNumGames] = useState(6)
+  const [pickCount, setPickCount] = useState(0)
   const [simulationDepth, setSimulationDepth] = useState(500)
   const [mode, setMode] = useState('combined')
   const [weights, setWeights] = useState<AlgorithmWeights>({ ...DEFAULT_WEIGHTS })
@@ -283,6 +287,11 @@ export default function LotoCore() {
 
   // Cancel ref for loop mode
   const cancelRef = useRef(false)
+
+  // Sync pickCount when lottery changes
+  useEffect(() => {
+    if (currentConfig) setPickCount(currentConfig.default_pick_count)
+  }, [currentConfig])
 
   // Derived
   const enabledCount = useMemo(() =>
@@ -350,7 +359,7 @@ export default function LotoCore() {
     try {
       const config: LotoCoreConfig = {
         game_type: activeGame,
-        pick_count: currentConfig.default_pick_count,
+        pick_count: pickCount || currentConfig.default_pick_count,
         pool_size: currentConfig.numbers_pool_size,
         num_games: numGames,
         simulation_depth: simulationDepth,
@@ -437,7 +446,7 @@ export default function LotoCore() {
     } finally {
       setLoading(false)
     }
-  }, [activeGame, currentConfig, numGames, simulationDepth, mode, weights, enabledAlgorithms, enabledCount, xrayEnabled, minScore, showToast, loopMode, loopMax])
+  }, [activeGame, currentConfig, numGames, pickCount, simulationDepth, mode, weights, enabledAlgorithms, enabledCount, xrayEnabled, minScore, showToast, loopMode, loopMax])
 
   const handleCancel = useCallback(() => {
     cancelRef.current = true
@@ -451,9 +460,9 @@ export default function LotoCore() {
         name: null,
         numbers: game.numbers,
         strategy_id: 'lotocore_v4',
-        strategy_label: `LotoCore (${mode})`,
+        strategy_label: `LotoCore (${MODE_LABELS[mode] || mode})`,
         game_type: activeGame,
-        notes: `Score: ${Math.round(game.score * 100)} | Modo: ${mode}`,
+        notes: `Score: ${Math.round(game.score * 100)} | Modo: ${MODE_LABELS[mode] || mode}`,
         target_contest_number: null,
       })
       showToast('Jogo salvo!', 'success')
@@ -470,9 +479,9 @@ export default function LotoCore() {
         await api.saveGame({
           numbers: game.numbers,
           strategy_id: 'lotocore_v4',
-          strategy_label: `LotoCore (${mode})`,
+          strategy_label: `LotoCore (${MODE_LABELS[mode] || mode})`,
           game_type: activeGame,
-          notes: `Score: ${game.score.toFixed(3)} | Modo: ${mode}`,
+          notes: `Score: ${game.score.toFixed(3)} | Modo: ${MODE_LABELS[mode] || mode}`,
         })
       }
       showToast(`${result.games.length} jogos salvos!`, 'success')
@@ -523,9 +532,9 @@ export default function LotoCore() {
         await api.saveGame({
           numbers: game.numbers,
           strategy_id: 'lotocore_v4',
-          strategy_label: `LotoCore (${mode})`,
+          strategy_label: `LotoCore (${MODE_LABELS[mode] || mode})`,
           game_type: activeGame,
-          notes: `Score: ${game.score.toFixed(3)} | Modo: ${mode}`,
+          notes: `Score: ${game.score.toFixed(3)} | Modo: ${MODE_LABELS[mode] || mode}`,
         })
       }
       showToast(`${filtered.length} jogos com score >= ${saveMinScore} salvos!`, 'success')
@@ -599,11 +608,11 @@ export default function LotoCore() {
 
               {/* Active game info */}
               {currentConfig && (
-                <div className={cn('lottery-' + activeGame, 'bg-accent rounded-[10px] py-2 px-3 mb-3.5 flex items-center gap-2 text-[11px]')}>
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ background: currentConfig.color }} />
+                <div className={cn('lottery-' + activeGame, 'bg-accent rounded-[10px] py-2 px-3 mb-3.5 flex items-center gap-2 text-[11px]')} style={{ '--c': currentConfig.color } as React.CSSProperties}>
+                  <div className="w-2 h-2 rounded-full shrink-0 [background:var(--c)]" />
                   <span className="font-bold text-foreground">{currentConfig.display_name}</span>
                   <span className="text-muted-foreground">
-                    {currentConfig.default_pick_count}/{currentConfig.numbers_pool_size}
+                    {pickCount || currentConfig.default_pick_count}/{currentConfig.numbers_pool_size}
                   </span>
                 </div>
               )}
@@ -783,6 +792,18 @@ export default function LotoCore() {
                   </div>
                 </div>
 
+                {/* Pick count */}
+                <div className="mb-2.5">
+                  <div className="flex justify-between items-center mb-1">
+                    <Label className="text-[11px] text-muted-foreground">Dezenas por jogo</Label>
+                    <div className="flex items-center gap-0.5 bg-muted rounded-md">
+                      <button onClick={() => setPickCount(p => Math.max(currentConfig?.min_pick_count || 1, p - 1))} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-accent text-sm cursor-pointer">&minus;</button>
+                      <span className="w-7 text-center font-bold text-xs">{pickCount}</span>
+                      <button onClick={() => setPickCount(p => Math.min(currentConfig?.max_pick_count || 20, p + 1))} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-accent text-sm cursor-pointer">+</button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Simulation depth */}
                 <div className="mb-2.5">
                   <div className="flex justify-between items-center mb-1">
@@ -831,7 +852,7 @@ export default function LotoCore() {
                   <Label className="text-[11px] text-muted-foreground mb-1.5 block">Modo de geracao</Label>
                   <Select value={mode} onValueChange={(v) => { if (v) { setMode(v); setActivePreset(null) } }}>
                     <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione">{MODE_LABELS[mode] || mode}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="combined">Combinado</SelectItem>
@@ -1099,11 +1120,11 @@ export default function LotoCore() {
                               </div>
 
                               {/* Score badge */}
-                              <div className="text-center shrink-0 min-w-[56px]">
-                                <div className="text-lg font-[800] tabular-nums leading-none" style={{ color: scoreColor }}>
+                              <div className="text-center shrink-0 min-w-[56px]" style={{ '--c': scoreColor } as React.CSSProperties}>
+                                <div className="text-lg font-[800] tabular-nums leading-none [color:var(--c)]">
                                   {(game.score * 100).toFixed(0)}
                                 </div>
-                                <div className="text-[9px] font-semibold uppercase tracking-[0.04em] mt-0.5" style={{ color: scoreColor }}>
+                                <div className="text-[9px] font-semibold uppercase tracking-[0.04em] mt-0.5 [color:var(--c)]">
                                   {scoreLabel}
                                 </div>
                               </div>
@@ -1139,11 +1160,10 @@ export default function LotoCore() {
                               {(Object.entries(game.algorithm_scores) as [keyof AlgorithmScores, number][]).map(([key, val]) => (
                                 <div
                                   key={key}
-                                  className="rounded-[1px] opacity-70"
+                                  className={cn('rounded-[1px] opacity-70', val > 0 ? 'min-w-0.5' : 'min-w-0')}
                                   style={{
                                     flex: val,
                                     background: SCORE_LABELS[key]?.color || 'var(--muted)',
-                                    minWidth: val > 0 ? 2 : 0,
                                   }}
                                 />
                               ))}
@@ -1179,12 +1199,12 @@ export default function LotoCore() {
                 <div className="animate-fade-in">
 
                   {/* Overall score */}
-                  <Card className="mb-3 border-primary/20">
+                  <Card className="mb-3 border-primary/20" style={{ '--c': getScoreColor(selectedGame.score) } as React.CSSProperties}>
                     <CardContent className="p-3 text-center">
-                      <div className="text-[32px] font-black tabular-nums leading-none mb-1" style={{ color: getScoreColor(selectedGame.score) }}>
+                      <div className="text-[32px] font-black tabular-nums leading-none mb-1 [color:var(--c)]">
                         {(selectedGame.score * 100).toFixed(1)}
                       </div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.05em]" style={{ color: getScoreColor(selectedGame.score) }}>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] [color:var(--c)]">
                         Score {getScoreLabel(selectedGame.score)}
                       </div>
                       <Progress
@@ -1225,20 +1245,20 @@ export default function LotoCore() {
                           const pct = value * 100
 
                           return (
-                            <div key={key}>
+                            <div key={key} style={{ '--c': meta.color } as React.CSSProperties}>
                               <div className="flex justify-between items-center mb-[3px] gap-1">
                                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                  <div className="w-2 h-2 rounded-sm shrink-0" style={{ background: meta.color }} />
+                                  <div className="w-2 h-2 rounded-sm shrink-0 [background:var(--c)]" />
                                   <span className="text-[10px] font-medium text-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                                     {meta.label}
                                   </span>
                                 </div>
-                                <span className="text-[10px] font-bold tabular-nums shrink-0 min-w-[30px] text-right" style={{ color: meta.color }}>
+                                <span className="text-[10px] font-bold tabular-nums shrink-0 min-w-[30px] text-right [color:var(--c)]">
                                   {pct.toFixed(0)}%
                                 </span>
                               </div>
                               <div className="h-1 rounded-sm overflow-hidden bg-muted">
-                                <div className="h-full rounded-sm transition-[width] duration-500 ease-out" style={{ width: `${pct}%`, background: meta.color }} />
+                                <div className="h-full rounded-sm transition-[width] duration-500 ease-out [background:var(--c)]" style={{ width: `${pct}%` }} />
                               </div>
                             </div>
                           )
@@ -1284,8 +1304,8 @@ export default function LotoCore() {
                           const statusIcons = { good: '●', ok: '◐', warn: '○' }
 
                           return diagnostics.map((d, i) => (
-                            <div key={i} className="flex items-center gap-2 text-[11px] py-1">
-                              <span className="text-[10px] shrink-0" style={{ color: statusColors[d.status] }}>
+                            <div key={i} className="flex items-center gap-2 text-[11px] py-1" style={{ '--c': statusColors[d.status] } as React.CSSProperties}>
+                              <span className="text-[10px] shrink-0 [color:var(--c)]">
                                 {statusIcons[d.status]}
                               </span>
                               <span className="font-semibold text-foreground min-w-[64px] shrink-0 text-[10px]">

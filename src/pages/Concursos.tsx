@@ -377,7 +377,7 @@ function Row({ label, value, color }: { label: string; value: string; color?: st
   return (
     <div className="flex justify-between items-center">
       <span className="text-[13px] text-muted-foreground">{label}</span>
-      <span className="text-sm font-bold" style={{ color: color || 'var(--foreground)' }}>{value}</span>
+      <span className={cn('text-sm font-bold', !color && 'text-foreground')} style={color ? { color } : undefined}>{value}</span>
     </div>
   )
 }

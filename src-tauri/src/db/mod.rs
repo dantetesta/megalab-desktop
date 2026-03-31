@@ -3,6 +3,65 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use crate::models::*;
 
+/// Splits a SQL string into individual statements, correctly handling
+/// semicolons that appear inside single-quoted string literals.
+/// A ';' inside '...' (with '' as the escape for a literal quote) is NOT a
+/// statement terminator — this was the root cause of the 2990→2929 import bug.
+fn split_sql_statements_safe(sql: &str) -> Vec<String> {
+    let mut statements: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut in_string = false;
+    let mut chars = sql.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if in_string {
+            current.push(ch);
+            if ch == '\'' {
+                // SQL escape for a literal single quote is '' (two single quotes)
+                if chars.peek() == Some(&'\'') {
+                    current.push(chars.next().unwrap());
+                } else {
+                    in_string = false;
+                }
+            }
+        } else if ch == '\'' {
+            in_string = true;
+            current.push(ch);
+        } else if ch == ';' {
+            let trimmed = current.trim().to_string();
+            if !trimmed.is_empty() {
+                statements.push(trimmed);
+            }
+            current = String::new();
+        } else {
+            current.push(ch);
+        }
+    }
+    // Handle final statement without trailing semicolon
+    let trimmed = current.trim().to_string();
+    if !trimmed.is_empty() {
+        statements.push(trimmed);
+    }
+    statements
+}
+
+/// Case-insensitive replacement of "INSERT INTO contests" →
+/// "INSERT OR IGNORE INTO contests" (no-op if already has OR IGNORE).
+fn insert_or_ignore_contests(stmt: &str) -> String {
+    let lower = stmt.to_lowercase();
+    if lower.contains("insert or ignore into") {
+        return stmt.to_string();
+    }
+    // Find "insert into" position and insert " OR IGNORE" after "insert"
+    if let Some(pos) = lower.find("insert into") {
+        let mut result = stmt.to_string();
+        result.insert_str(pos + 6, " OR IGNORE");
+        result
+    } else {
+        stmt.to_string()
+    }
+}
+
 pub struct Database {
     pub conn: Mutex<Connection>,
 }
@@ -198,6 +257,23 @@ impl Database {
         conn_ref.execute("ALTER TABLE saved_games ADD COLUMN game_type TEXT DEFAULT 'megasena'", []).ok();
         conn_ref.execute("ALTER TABLE saved_games ADD COLUMN bet_price_value REAL", []).ok();
 
+        // SuperLab strategies table
+        conn_ref.execute_batch(
+            "CREATE TABLE IF NOT EXISTS superlab_strategies (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                game_type TEXT NOT NULL,
+                strategy_type TEXT NOT NULL DEFAULT 'custom',
+                config_json TEXT NOT NULL DEFAULT '{}',
+                games_json TEXT NOT NULL DEFAULT '[]',
+                notes TEXT,
+                score_json TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_sl_strategies_game ON superlab_strategies(game_type);"
+        ).ok();
+
         // AI Config table for LotoCore v4.0
         conn_ref.execute_batch(
             "CREATE TABLE IF NOT EXISTS ai_config (
@@ -372,7 +448,13 @@ impl Database {
     }
 
     pub fn get_total_contests(&self) -> Result<i64, String> {
-        self.get_total_contests_for_game("megasena")
+        // Count ALL contests across every game type — not just megasena
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let n: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM contests",
+            [], |row| row.get(0)
+        ).unwrap_or(0);
+        Ok(n)
     }
 
     pub fn get_game_types_with_contests(&self) -> Result<Vec<String>, String> {
@@ -392,7 +474,34 @@ impl Database {
     }
 
     pub fn get_last_contest(&self) -> Result<Option<Contest>, String> {
-        self.get_last_contest_for_game("megasena")
+        // Most recent contest across ALL game types (by date)
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
+            "SELECT id, contest_number, contest_date, location, numbers_draw_order_json, numbers_sorted_json, numbers_sorted_text, accumulated, next_contest_number, next_contest_date, estimated_next_prize, amount_collected, raw_json, trevos_json, time_coracao, mes_sorte
+             FROM contests ORDER BY contest_date DESC, id DESC LIMIT 1"
+        ).map_err(|e| e.to_string())?;
+        let contest = stmt.query_row([], |row| {
+            Ok(Contest {
+                id: row.get(0)?,
+                contest_number: row.get(1)?,
+                contest_date: row.get(2)?,
+                location: row.get(3)?,
+                numbers_draw_order: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or_default(),
+                numbers_sorted: serde_json::from_str(&row.get::<_, String>(5)?).unwrap_or_default(),
+                numbers_sorted_text: row.get(6)?,
+                accumulated: row.get::<_, i32>(7)? == 1,
+                next_contest_number: row.get(8)?,
+                next_contest_date: row.get(9)?,
+                estimated_next_prize: row.get(10)?,
+                amount_collected: row.get(11)?,
+                raw_json: row.get(12)?,
+                trevos_json: row.get(13)?,
+                time_coracao: row.get(14)?,
+                mes_sorte: row.get(15)?,
+                prizes: vec![],
+            })
+        }).ok();
+        Ok(contest)
     }
 
     pub fn get_last_contest_for_game(&self, game_type: &str) -> Result<Option<Contest>, String> {
@@ -1145,9 +1254,9 @@ impl Database {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
 
         // Split into individual statements and execute each one independently.
-        // This avoids "cannot start a transaction within a transaction" errors
-        // caused by execute_batch when the SQL contains transaction commands.
-        for statement in sql.split(';') {
+        // Uses a proper SQL-aware splitter that respects single-quoted string literals,
+        // so semicolons inside JSON/text fields don't break INSERT statements.
+        for statement in split_sql_statements_safe(sql) {
             let stmt = statement.trim();
             if stmt.is_empty() { continue; }
             if stmt.starts_with("--") { continue; } // skip comments
@@ -1159,8 +1268,9 @@ impl Database {
             }
 
             // Make contest inserts use INSERT OR IGNORE to prevent duplicates
-            let safe_stmt = if upper.contains("INSERT INTO CONTESTS ") {
-                stmt.replace("INSERT INTO contests ", "INSERT OR IGNORE INTO contests ")
+            // (case-insensitive check to handle any casing in the SQL file)
+            let safe_stmt = if upper.contains("INSERT INTO CONTESTS") {
+                insert_or_ignore_contests(stmt)
             } else {
                 stmt.to_string()
             };
@@ -1293,5 +1403,43 @@ impl Database {
             })
         }).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
         Ok(games)
+    }
+
+    // ── SuperLab Strategy Persistence ──
+    pub fn save_superlab_strategy(&self, params: &crate::models::SuperLabSaveStrategyParams) -> Result<i64, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let games_json = serde_json::to_string(&params.games).unwrap_or_else(|_| "[]".into());
+        conn.execute(
+            "INSERT INTO superlab_strategies (name, game_type, strategy_type, config_json, games_json, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![params.name, params.game_type, params.strategy_type, params.config_json, games_json, params.notes]
+        ).map_err(|e| e.to_string())?;
+        Ok(conn.last_insert_rowid())
+    }
+
+    pub fn list_superlab_strategies(&self, game_type: &str) -> Result<Vec<crate::models::SuperLabStrategy>, String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        let mut stmt = conn.prepare(
+            "SELECT id, name, game_type, strategy_type, config_json, games_json, notes, score_json, created_at FROM superlab_strategies WHERE game_type = ?1 ORDER BY created_at DESC"
+        ).map_err(|e| e.to_string())?;
+        let rows = stmt.query_map(params![game_type], |row| {
+            Ok(crate::models::SuperLabStrategy {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                game_type: row.get(2)?,
+                strategy_type: row.get(3)?,
+                config_json: row.get(4)?,
+                games_json: row.get(5)?,
+                notes: row.get(6)?,
+                score_json: row.get(7)?,
+                created_at: row.get(8)?,
+            })
+        }).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
+        Ok(rows)
+    }
+
+    pub fn delete_superlab_strategy(&self, id: i64) -> Result<(), String> {
+        let conn = self.conn.lock().map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM superlab_strategies WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
+        Ok(())
     }
 }

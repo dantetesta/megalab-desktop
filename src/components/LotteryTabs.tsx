@@ -1,3 +1,4 @@
+import type React from 'react'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -19,14 +20,10 @@ export default function LotteryTabs({ activeGame, onSelect, games }: Props) {
               'px-4 py-2 rounded-t-[10px] text-[13px] font-semibold min-h-[40px]',
               'border-none cursor-pointer transition-all duration-150',
               isActive
-                ? 'border-b-2 hover:opacity-100 lottery-text-on-tint'
+                ? 'border-b-2 hover:opacity-100 lottery-tab-active'
                 : 'bg-transparent text-muted-foreground border-b-2 border-transparent hover:bg-accent',
             )}
-            style={{
-              ...(isActive
-                ? { background: `color-mix(in srgb, ${game.color} 10%, transparent)`, color: game.color, borderBottomColor: game.color }
-                : {}),
-            }}
+            style={isActive ? { '--c': game.color } as React.CSSProperties : undefined}
           >
             {game.display_name}
           </button>

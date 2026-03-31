@@ -1,4 +1,4 @@
-import { Home, Search, Cpu, Dices, MessageSquare, FolderHeart, Award, Settings, ChevronLeft } from 'lucide-react'
+import { Home, Search, Cpu, Dices, MessageSquare, FolderHeart, Award, Settings, ChevronLeft, FlaskConical, Layers } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import BannerCarousel from '@/components/BannerCarousel'
 
@@ -9,7 +9,9 @@ const navItems = [
   { id: 'gerador', label: 'Gerador', icon: Dices },
   { id: 'assistente', label: 'Assistente IA', icon: MessageSquare },
   { id: 'meus_jogos', label: 'Meus Jogos', icon: FolderHeart },
-  { id: 'settings', label: 'Configuracoes', icon: Settings },
+  { id: 'superlab',       label: 'SuperLab',        icon: FlaskConical },
+  { id: 'desdobramento',  label: 'Desdobramento',   icon: Layers },
+  { id: 'settings',       label: 'Configuracoes',   icon: Settings },
   { id: 'creditos', label: 'Creditos', icon: Award },
 ]
 
@@ -55,7 +57,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       <div className="px-3 pb-3 text-[10px] text-muted-foreground/50">
-        LotoLab Core Engine v4.0
+        LotoLab Core Engine v4.2.3
       </div>
     </aside>
   )

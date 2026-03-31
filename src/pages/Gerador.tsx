@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { api, type GeneratedGame } from '@/lib/tauri'
 import { useAppStore } from '@/stores/appStore'
 import { useLotteryStore } from '@/stores/lotteryStore'
@@ -50,12 +50,19 @@ export default function Gerador() {
   const [showHist, setShowHist] = useState(false)
   const [betPrice, setBetPrice] = useState<number | null>(null)
   const [priceMap, setPriceMap] = useState<Record<number, number>>({})
+  const [pickCount, setPickCount] = useState(currentConfig?.default_pick_count || 6)
 
   useEffect(() => {
     if (currentConfig) {
-      api.getBetPrice(activeGame, currentConfig.default_pick_count).then(p => setBetPrice(p)).catch(() => setBetPrice(null))
+      setPickCount(currentConfig.default_pick_count)
     }
-  }, [activeGame, currentConfig])
+  }, [currentConfig])
+
+  useEffect(() => {
+    if (currentConfig) {
+      api.getBetPrice(activeGame, pickCount).then(p => setBetPrice(p)).catch(() => setBetPrice(null))
+    }
+  }, [activeGame, currentConfig, pickCount])
 
   useEffect(() => {
     const allGames = [...portfolio, ...(game ? [game] : [])]
@@ -70,14 +77,14 @@ export default function Gerador() {
 
   const gen = async () => {
     setLoading(true)
-    try { const g = await api.generateGame(sel, activeGame); setGame(g); setPortfolio([]); setShowXray(false); setHistory(p => [g, ...p].slice(0, 20)) }
+    try { const g = await api.generateGame(sel, activeGame, pickCount); setGame(g); setPortfolio([]); setShowXray(false); setHistory(p => [g, ...p].slice(0, 20)) }
     catch (e: any) { showToast(e?.toString() || 'Erro', 'error') }
     finally { setLoading(false) }
   }
 
   const genPortfolio = async () => {
     setLoading(true)
-    try { const gs = await api.generatePortfolio(count, activeGame); setPortfolio(gs); setGame(null); setShowXray(false) }
+    try { const gs = await api.generatePortfolio(count, activeGame, pickCount); setPortfolio(gs); setGame(null); setShowXray(false) }
     catch (e: any) { showToast(e?.toString() || 'Erro', 'error') }
     finally { setLoading(false) }
   }
@@ -120,9 +127,9 @@ export default function Gerador() {
 
       {/* Active lottery info */}
       {currentConfig && (
-        <Card className="mb-5">
+        <Card className="mb-5" style={{ '--c': currentConfig.color } as React.CSSProperties}>
           <CardContent className="px-4 py-2.5 flex items-center gap-2.5 text-xs">
-            <div className="w-2 h-2 rounded-full" style={{ background: currentConfig.color }} />
+            <div className="w-2 h-2 rounded-full [background:var(--c)]" />
             <span className="font-semibold text-foreground">{currentConfig.display_name}</span>
             <span className="text-muted-foreground">·</span>
             <span className="text-muted-foreground">{currentConfig.default_pick_count} numeros de {currentConfig.numbers_pool_size === 100 ? '00-99' : `01-${String(currentConfig.numbers_pool_size).padStart(2, '0')}`}</span>
@@ -132,7 +139,7 @@ export default function Gerador() {
             {priceStr && (
               <>
                 <span className="text-muted-foreground">·</span>
-                <span className="flex items-center gap-1 font-bold lottery-text-on-tint" style={{ color: currentConfig.color }}>
+                <span className="flex items-center gap-1 font-bold lottery-text-on-tint [color:var(--c)]">
                   <DollarSign size={11} /> {priceStr}
                 </span>
               </>
@@ -141,9 +148,39 @@ export default function Gerador() {
         </Card>
       )}
 
+      {/* Controls: pick count + generate buttons */}
+      {currentConfig && (
+        <div className="flex items-center gap-4 flex-wrap mb-5">
+          {/* Dezenas */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Dezenas:</span>
+            <div className="flex items-center gap-0.5 bg-muted rounded-lg px-0.5">
+              <button onClick={() => setPickCount(p => Math.max(currentConfig?.min_pick_count || 1, p - 1))} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-accent text-sm cursor-pointer">&minus;</button>
+              <span className="w-7 text-center font-bold text-sm">{pickCount}</span>
+              <button onClick={() => setPickCount(p => Math.min(currentConfig?.max_pick_count || 20, p + 1))} className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-accent text-sm cursor-pointer">+</button>
+            </div>
+          </div>
+          {/* Gerar 1 */}
+          <Button onClick={gen} disabled={loading} className="gap-1.5">
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Dices size={15} />} Gerar 1 jogo
+          </Button>
+          {/* Portfolio stepper */}
+          <div className="flex items-center gap-1.5 bg-muted rounded-lg px-2 py-1">
+            <button onClick={() => setCount(c => Math.max(2, c - 1))} className="w-6 h-6 rounded-full border border-border bg-card flex items-center justify-center cursor-pointer text-foreground shrink-0"><Minus size={12} /></button>
+            <span className="w-6 text-center text-sm font-bold">{count}</span>
+            <button onClick={() => setCount(c => Math.min(50, c + 1))} className="w-6 h-6 rounded-full border border-border bg-card flex items-center justify-center cursor-pointer text-foreground shrink-0"><Plus size={12} /></button>
+          </div>
+          <Button variant="secondary" onClick={genPortfolio} disabled={loading} className="gap-1.5">
+            <Briefcase size={14} /> Gerar {count} jogos
+          </Button>
+          {/* Price */}
+          {priceStr && <span className="text-xs font-bold text-primary">{priceStr}</span>}
+        </div>
+      )}
+
       {/* Strategy grid */}
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">Escolha a estrategia</p>
-      <div className="grid grid-cols-2 gap-2.5 mb-6">
+      <div className="grid grid-cols-2 gap-2.5 mb-5">
         {strategies.map(s => {
           const isActive = sel === s.id
           return (
@@ -173,20 +210,7 @@ export default function Gerador() {
         })}
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-3 items-center flex-wrap mb-7">
-        <Button onClick={gen} disabled={loading} className="gap-2">
-          {loading ? <Loader2 size={16} className="animate-spin" /> : <Dices size={16} />} Gerar 1 jogo
-        </Button>
-        <div className="flex items-center gap-2 bg-muted rounded-xl px-3.5 py-1.5 min-h-[44px]">
-          <button onClick={() => setCount(c => Math.max(2, c - 1))} className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center cursor-pointer text-foreground shrink-0"><Minus size={14} /></button>
-          <span className="w-7 text-center text-sm font-bold text-foreground select-none">{count}</span>
-          <button onClick={() => setCount(c => Math.min(20, c + 1))} className="w-7 h-7 rounded-full border border-border bg-card flex items-center justify-center cursor-pointer text-foreground shrink-0"><Plus size={14} /></button>
-        </div>
-        <Button variant="secondary" onClick={genPortfolio} disabled={loading} className="gap-1.5">
-          <Briefcase size={15} /> Gerar {count} jogos
-        </Button>
-      </div>
+      {/* Results section */}
 
       {/* Single game result */}
       {game && (
@@ -212,7 +236,7 @@ export default function Gerador() {
                 <>
                   <span className="w-0.5 h-8 bg-border rounded mx-2" />
                   {game.trevos.map((t, i) => (
-                    <span key={`trevo-${t}`} className="animate-ball-pop w-12 h-12 rounded-full inline-flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white text-[17px] font-extrabold font-[Manrope,monospace] tracking-tight shadow-[inset_0_3px_6px_rgba(255,255,255,0.3),0_3px_8px_rgba(0,0,0,0.25)]" style={{ animationDelay: `${(game.numbers.length + i) * 100}ms`, animationFillMode: 'both' }}>{String(t).padStart(2, '0')}</span>
+                    <span key={`trevo-${t}`} className="animate-ball-pop w-12 h-12 rounded-full inline-flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-600 text-white text-[17px] font-extrabold font-[Manrope,monospace] tracking-tight shadow-[inset_0_3px_6px_rgba(255,255,255,0.3),0_3px_8px_rgba(0,0,0,0.25)] [animation-fill-mode:both]" style={{ animationDelay: `${(game.numbers.length + i) * 100}ms` }}>{String(t).padStart(2, '0')}</span>
                   ))}
                 </>
               )}

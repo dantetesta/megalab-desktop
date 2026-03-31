@@ -159,7 +159,7 @@ export const api = {
     invoke<ContestSearchResult>('search_contests', { params }),
   getContestDetails: (contestNumber: number, gameType?: string) => invoke<Contest | null>('get_contest_details', { contestNumber, gameType: gameType || null }),
   generateGame: (strategyId: string, gameType?: string, pickCount?: number) => invoke<GeneratedGame>('generate_game', { params: { strategy_id: strategyId, count: 1, game_type: gameType || null, pick_count: pickCount || null } }),
-  generatePortfolio: (count: number, gameType?: string) => invoke<GeneratedGame[]>('generate_portfolio', { count, gameType: gameType || null }),
+  generatePortfolio: (count: number, gameType?: string, pickCount?: number) => invoke<GeneratedGame[]>('generate_portfolio', { count, gameType: gameType || null, pickCount: pickCount || null }),
   analyzeGame: (numbers: number[], gameType?: string) => invoke<GameAnalysis>('analyze_game_cmd', { numbers, gameType: gameType || null }),
   saveGame: (params: { name?: string | null; numbers: number[]; strategy_id: string; strategy_label: string; notes?: string | null; target_contest_number?: number | null; game_type?: string | null }) =>
     invoke<number>('save_game', { params }),
@@ -230,6 +230,70 @@ export const api = {
   // ═══ Banners / Ads ═══
   getBanners: () => invoke<LocalBanner[]>('get_banners'),
   syncBanners: () => invoke<LocalBanner[]>('sync_banners_cmd'),
+
+  // ═══ SuperLab ═══
+  superlabBacktestGames: (games: number[][], gameType: string) =>
+    invoke<SuperLabBacktestSummary[]>('superlab_backtest_games', { games, gameType }),
+  superlabGetCooccurrence: (gameType: string, topN?: number) =>
+    invoke<SuperLabCooccurrenceEntry[]>('superlab_get_cooccurrence', { gameType, topN: topN ?? 200 }),
+  superlabGenerateFiltered: (params: SuperLabFilterParams) =>
+    invoke<number[][]>('superlab_generate_filtered', { params }),
+  superlabScorePortfolio: (games: number[][], gameType: string) =>
+    invoke<SuperLabPortfolioScore>('superlab_score_portfolio', { games, gameType }),
+  superlabAdvancedAnalytics: (gameType: string, lastN?: number) =>
+    invoke<SuperLabAdvancedAnalytics>('superlab_advanced_analytics', { gameType, lastN: lastN ?? null }),
+  superlabMonteCarlo: (game: number[], gameType: string, iterations?: number) =>
+    invoke<SuperLabMonteCarloResult>('superlab_monte_carlo', { game, gameType, iterations: iterations ?? 10000 }),
+  superlabGreedyCover: (baseNumbers: number[], gameType: string) =>
+    invoke<SuperLabSetCoverResult>('superlab_greedy_cover', { baseNumbers, gameType }),
+  superlabGenerateDiverse: (gameType: string, count: number, minDistance?: number) =>
+    invoke<number[][]>('superlab_generate_diverse', { gameType, count, minDistance: minDistance ?? null }),
+  superlabSaveStrategy: (params: SuperLabSaveStrategyParams) =>
+    invoke<number>('superlab_save_strategy', { params }),
+  superlabListStrategies: (gameType: string) =>
+    invoke<SuperLabStrategy[]>('superlab_list_strategies', { gameType }),
+  superlabDeleteStrategy: (id: number) =>
+    invoke<void>('superlab_delete_strategy', { id }),
+  superlabMultiObjective: (gameType: string, portfolioSize?: number, candidates?: number, wFrequency?: number, wDiversity?: number, wCoverage?: number) =>
+    invoke<SuperLabMultiObjectiveResult>('superlab_multi_objective', {
+      gameType,
+      portfolioSize: portfolioSize ?? null,
+      candidates: candidates ?? null,
+      wFrequency: wFrequency ?? null,
+      wDiversity: wDiversity ?? null,
+      wCoverage: wCoverage ?? null,
+    }),
+  superlabDistributionAnalysis: (gameType: string, lastN?: number) =>
+    invoke<SuperLabDistributionAnalysis>('superlab_distribution_analysis', { gameType, lastN: lastN ?? null }),
+  superlabTripleCooccurrence: (gameType: string, topN?: number, lastN?: number) =>
+    invoke<SuperLabTripleEntry[]>('superlab_triple_cooccurrence', { gameType, topN: topN ?? null, lastN: lastN ?? null }),
+  superlabPeriodCompare: (gameType: string, windowA?: number, windowB?: number) =>
+    invoke<SuperLabPeriodCompareResult>('superlab_period_compare', { gameType, windowA: windowA ?? null, windowB: windowB ?? null }),
+  superlabGeneticOptimize: (gameType: string, portfolioSize?: number, popSize?: number, generations?: number, wFrequency?: number, wDiversity?: number, wCoverage?: number) =>
+    invoke<SuperLabGeneticResult>('superlab_genetic_optimize', {
+      gameType,
+      portfolioSize: portfolioSize ?? null,
+      popSize: popSize ?? null,
+      generations: generations ?? null,
+      wFrequency: wFrequency ?? null,
+      wDiversity: wDiversity ?? null,
+      wCoverage: wCoverage ?? null,
+    }),
+  superlabSimulatedAnnealing: (gameType: string, portfolioSize?: number, maxIterations?: number, wFrequency?: number, wDiversity?: number, wCoverage?: number) =>
+    invoke<SuperLabSAResult>('superlab_simulated_annealing', {
+      gameType,
+      portfolioSize: portfolioSize ?? null,
+      maxIterations: maxIterations ?? null,
+      wFrequency: wFrequency ?? null,
+      wDiversity: wDiversity ?? null,
+      wCoverage: wCoverage ?? null,
+    }),
+  superlabReduceRedundancy: (games: number[][], maxSimilarity?: number) =>
+    invoke<SuperLabRedundancyResult>('superlab_reduce_redundancy', { games, maxSimilarity: maxSimilarity ?? null }),
+  superlabProbabilityEngine: (gameType: string, pickCount?: number) =>
+    invoke<SuperLabProbabilityResult>('superlab_probability_engine', { gameType, pickCount: pickCount ?? null }),
+  superlabComparePortfolios: (games: number[][], names: string[], gameType: string) =>
+    invoke<SuperLabPortfolioCompareResult>('superlab_compare_portfolios', { games, names, gameType }),
 }
 
 export interface DynamicDashboardStats {
@@ -420,3 +484,256 @@ export interface LocalBanner {
 
 /** Convert a local file path to a Tauri asset URL for use in <img> src */
 export const assetUrl = (filePath: string) => convertFileSrc(filePath)
+
+// ═══ SuperLab Types ═══
+export interface SuperLabBacktestHit {
+  contest_number: number
+  contest_date: string
+  hits: number[]
+  hit_count: number
+  prize_label: string
+}
+
+export interface SuperLabBacktestSummary {
+  game: number[]
+  total_contests: number
+  hits: SuperLabBacktestHit[]
+  max_hits: number
+  count_4plus: number
+  count_5plus: number
+  count_6plus: number
+}
+
+export interface SuperLabCooccurrenceEntry {
+  num_a: number
+  num_b: number
+  frequency: number
+  pct: number
+}
+
+export interface SuperLabFilterParams {
+  game_type: string
+  count: number
+  sum_min: number | null
+  sum_max: number | null
+  even_min: number | null
+  even_max: number | null
+  repeats_max: number | null
+  strategy_id: string | null
+}
+
+export interface SuperLabPortfolioScore {
+  total_games: number
+  distinct_numbers: number
+  pool_size: number
+  coverage_pct: number
+  avg_overlap: number
+  diversity_score: number
+  quality_label: string
+}
+
+export interface SuperLabNumberAnalytics {
+  number: number
+  frequency: number
+  freq_pct: number
+  delay: number
+  avg_gap: number
+  recent_30: number
+  recent_100: number
+  score: number
+}
+
+export interface SuperLabAdvancedAnalytics {
+  game_type: string
+  total_contests: number
+  window: number
+  numbers: SuperLabNumberAnalytics[]
+  sum_avg: number
+  even_avg: number
+  entropy: number
+  top_hot: number[]
+  top_cold: number[]
+  top_pairs: SuperLabCooccurrenceEntry[]
+  insights: string[]
+}
+
+export interface SuperLabMonteCarloResult {
+  game: number[]
+  iterations: number
+  min_prize_hits: number
+  hit_counts: number[]
+  hit_pcts: number[]
+  expected_contests_to_prize: number
+}
+
+export interface SuperLabSetCoverResult {
+  tickets: number[][]
+  covered_pairs: number
+  total_pairs: number
+  coverage_pct: number
+}
+
+export interface SuperLabStrategy {
+  id: number
+  name: string
+  game_type: string
+  strategy_type: string
+  config_json: string
+  games_json: string
+  notes: string | null
+  score_json: string | null
+  created_at: string
+}
+
+export interface SuperLabSaveStrategyParams {
+  name: string
+  game_type: string
+  strategy_type: string
+  config_json: string
+  games: number[][]
+  notes: string | null
+}
+
+export interface SuperLabOptimizedPortfolio {
+  rank: number
+  games: number[][]
+  frequency_score: number
+  diversity_score: number
+  coverage_score: number
+  composite_score: number
+  is_pareto: boolean
+}
+
+export interface SuperLabMultiObjectiveResult {
+  portfolios: SuperLabOptimizedPortfolio[]
+  pareto_count: number
+  total_candidates: number
+  w_frequency: number
+  w_diversity: number
+  w_coverage: number
+}
+
+export interface SuperLabMolduraMioloStats {
+  avg_moldura: number
+  avg_miolo: number
+}
+
+export interface SuperLabSumHistogramBucket {
+  range_label: string
+  count: number
+  pct: number
+}
+
+export interface SuperLabRepeatsBucket {
+  repeats: number
+  count: number
+  pct: number
+}
+
+export interface SuperLabDistributionAnalysis {
+  game_type: string
+  total_contests: number
+  window: number
+  range_01_10: number
+  range_11_20: number
+  range_21_30: number
+  range_31_40: number
+  range_41_50: number
+  range_51_60: number
+  avg_even: number
+  avg_odd: number
+  avg_primes: number
+  avg_fibonacci: number
+  avg_sum: number
+  sum_histogram: SuperLabSumHistogramBucket[]
+  repeats_distribution: SuperLabRepeatsBucket[]
+  avg_repeats_from_last: number
+  moldura_miolo: SuperLabMolduraMioloStats | null
+}
+
+export interface SuperLabTripleEntry {
+  num_a: number
+  num_b: number
+  num_c: number
+  frequency: number
+  pct: number
+}
+
+export interface SuperLabNumberDelta {
+  number: number
+  freq_delta: number
+  delay_delta: number
+  score_delta: number
+}
+
+export interface SuperLabPeriodCompareResult {
+  window_a: number
+  window_b: number
+  top_gainers: SuperLabNumberDelta[]
+  top_losers: SuperLabNumberDelta[]
+  deltas: SuperLabNumberDelta[]
+}
+
+export interface SuperLabGeneticResult {
+  best_portfolio: number[][]
+  score_history: number[]
+  final_score: number
+  frequency_score: number
+  diversity_score: number
+  coverage_score: number
+  generations_run: number
+}
+
+export interface SuperLabSAResult {
+  best_portfolio: number[][]
+  initial_score: number
+  final_score: number
+  iterations_run: number
+  improvements: number
+  frequency_score: number
+  diversity_score: number
+  coverage_score: number
+}
+
+export interface SuperLabRedundancyResult {
+  original_count: number
+  reduced_count: number
+  removed_count: number
+  portfolio: number[][]
+  avg_similarity_before: number
+  avg_similarity_after: number
+}
+
+export interface SuperLabPrizeTier {
+  name: string
+  hits_required: number
+  probability: number
+  one_in: number
+  expected_tickets_to_win: number
+}
+
+export interface SuperLabProbabilityResult {
+  game_type: string
+  pick_count: number
+  pool_size: number
+  total_combinations: number
+  tiers: SuperLabPrizeTier[]
+}
+
+export interface SuperLabStrategyCompareEntry {
+  name: string
+  game: number[]
+  total_contests: number
+  prize_count: number
+  prize_rate_pct: number
+  max_hits: number
+  count_4plus: number
+  count_5plus: number
+  count_6plus: number
+}
+
+export interface SuperLabPortfolioCompareResult {
+  strategies: SuperLabStrategyCompareEntry[]
+  best_by_prize_rate_idx: number
+  best_by_max_hits_idx: number
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { api, type SavedGame, type GameAnalysis, type BetCheckResult, type HistoricalWinResult } from '@/lib/tauri'
 import { useAppStore } from '@/stores/appStore'
 import NumberBall from '@/components/NumberBall'
@@ -7,6 +7,7 @@ import BannerCarousel from '@/components/BannerCarousel'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { Star, Trash2, Copy, BarChart3, Ticket, ClipboardList, Download, Trophy, PlusCircle, DollarSign, History, X } from 'lucide-react'
 import GameCreator from '@/components/GameCreator'
+import HistoricalWinsPanel from '@/components/HistoricalWinsPanel'
 import { useLotteryStore } from '@/stores/lotteryStore'
 import LotteryTabs from '@/components/LotteryTabs'
 import { cn } from '@/lib/utils'
@@ -236,63 +237,14 @@ export default function MeusJogos() {
         </Card>
       )}
 
-      {/* Historical wins results */}
-      {historicalWins && historicalWins.length > 0 && (
-        <Card className="mt-4 mb-5 border-[color-mix(in_srgb,var(--primary)_20%,transparent)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_8%,var(--card)),var(--card))]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-3.5 flex-wrap">
-              <History size={18} className="text-primary" />
-              <span className="text-[13px] font-bold text-primary">Acertos Historicos - {currentGameName}</span>
-              <Badge variant="secondary" className="text-[10px]">{historicalWins.length} resultado{historicalWins.length > 1 ? 's' : ''} premiado{historicalWins.length > 1 ? 's' : ''}</Badge>
-              <button onClick={() => setHistoricalWins(null)} className="ml-auto bg-transparent border-none cursor-pointer text-muted-foreground text-[11px]">Fechar</button>
-            </div>
-            <div className="flex flex-col gap-2 max-h-[400px] overflow-auto">
-              {historicalWins.map((r, idx) => {
-                const gameName = games.find(g => g.id === r.game_id)?.name || games.find(g => g.id === r.game_id)?.strategy_label || `Jogo #${r.game_id}`
-                return (
-                  <Card key={`${r.game_id}-${r.contest_number}-${idx}`}>
-                    <CardContent className="px-4 py-3.5">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-[11px] font-bold text-muted-foreground">{gameName}</span>
-                        <span className="text-[11px] text-muted-foreground">vs Concurso #{r.contest_number}</span>
-                        <span className="text-[10px] text-muted-foreground">{r.contest_date}</span>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-1 flex-wrap">
-                          {r.game_numbers.map((n, ni) => (
-                            <span key={ni} className={cn(
-                              'w-7 h-7 rounded-full inline-flex items-center justify-center text-[10px] font-bold font-mono',
-                              r.hits.includes(n)
-                                ? 'bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-[inset_0_1px_3px_rgba(255,255,255,0.3)]'
-                                : 'bg-muted text-muted-foreground',
-                            )}>{String(n).padStart(2, '0')}</span>
-                          ))}
-                        </div>
-                        <div className="flex gap-1 flex-wrap items-center text-[10px] text-muted-foreground">
-                          <span>Sorteio:</span> {r.contest_numbers.map(n => String(n).padStart(2, '0')).join(', ')}
-                        </div>
-                        <span className={cn('text-[13px] font-extrabold', r.hit_count >= 4 ? 'text-accent-gold' : 'text-foreground')}>
-                          {r.prize_label}
-                          {r.prize_value != null && r.prize_value > 0 && (
-                            <span className="ml-2 text-primary">{r.prize_value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                          )}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {historicalWins && historicalWins.length === 0 && (
-        <Card className="mt-4 mb-5">
-          <CardContent className="p-5 text-center">
-            <p className="text-[13px] text-muted-foreground">Nenhuma aposta premiada encontrada no historico de {currentGameName}.</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Historical wins offcanvas panel */}
+      <HistoricalWinsPanel
+        open={historicalWins !== null}
+        onClose={() => setHistoricalWins(null)}
+        results={historicalWins ?? []}
+        gameName={currentGameName}
+        gameNames={Object.fromEntries(games.map(g => [g.id, g.name || g.strategy_label || `Jogo #${g.id}`]))}
+      />
 
       {/* Filters */}
       {games.length > 0 && (
@@ -363,8 +315,8 @@ export default function MeusJogos() {
                       {game.notes?.startsWith('Time do Coracao:') && <Badge className="bg-emerald-400/12 text-emerald-400 text-[10px]">{game.notes.replace('Time do Coracao: ', '')}</Badge>}
                       {qualityScore !== null && (
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-extrabold rounded-full px-2 py-0.5"
-                          style={{ color: qualityColor, background: `color-mix(in srgb, ${qualityColor} 12%, transparent)` }}
+                          className="inline-flex items-center gap-1 text-[10px] font-extrabold rounded-full px-2 py-0.5 lottery-done-pill"
+                          style={{ '--c': qualityColor } as React.CSSProperties}
                           title={`Score: ${qualityScore.toFixed(0)} - ${qualityLabel}`}
                         >
                           {qualityScore.toFixed(0)} {qualityLabel}
@@ -398,8 +350,8 @@ export default function MeusJogos() {
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setExpandedXray(null)} />
           <div
-            className="relative h-full bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200"
-            style={{ width: xrayWidth, minWidth: 500, maxWidth: 1000 }}
+            className="relative h-full bg-card border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200 min-w-[500px] max-w-[1000px]"
+            style={{ width: xrayWidth }}
           >
             {/* Resize handle */}
             <div
@@ -466,14 +418,14 @@ function QualityBreakdown({ analysis, gameType }: { analysis: GameAnalysis; game
   return (
     <Card className="mb-3 border-[color-mix(in_srgb,var(--primary)_15%,transparent)]">
       <CardContent className="p-4">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-3" style={{ '--c': scoreColor } as React.CSSProperties}>
           <div className="flex flex-col items-center">
-            <span className="text-[28px] font-extrabold leading-none" style={{ color: scoreColor }}>{score.toFixed(0)}</span>
-            <span className="text-[10px] font-bold mt-0.5" style={{ color: scoreColor }}>{scoreLabel}</span>
+            <span className="text-[28px] font-extrabold leading-none [color:var(--c)]">{score.toFixed(0)}</span>
+            <span className="text-[10px] font-bold mt-0.5 [color:var(--c)]">{scoreLabel}</span>
           </div>
           <div className="flex-1">
             <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(score, 100)}%`, background: scoreColor }} />
+              <div className="h-full rounded-full transition-all duration-500 [background:var(--c)]" style={{ width: `${Math.min(score, 100)}%` }} />
             </div>
           </div>
         </div>

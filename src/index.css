@@ -21,12 +21,12 @@
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.75 0.015 286.067);
+  --muted-foreground: oklch(0.78 0.015 286.067);
   --accent: oklch(0.30 0.02 292);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: #fafafa;
-  --border: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 14%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);
   --chart-1: oklch(0.897 0.196 126.665);
@@ -59,16 +59,88 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
-  font-family: var(--font-sans, 'Instrument Sans Variable', system-ui, -apple-system, sans-serif);
+  font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--background);
   color: var(--foreground);
-  font-size: 15px;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.011em;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Display font for headings, scores, numbers */
+h1, h2, h3, h4, .display-font, .number-ball {
+  font-family: 'Instrument Sans Variable', 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* Force sans-serif on ALL elements including Recharts tooltips */
+.recharts-tooltip-wrapper,
+.recharts-default-tooltip,
+.recharts-tooltip-label,
+.recharts-tooltip-item,
+.recharts-tooltip-item-name,
+.recharts-tooltip-item-value,
+.recharts-text,
+svg text {
+  font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Recharts tooltip dark theme override */
+.recharts-default-tooltip {
+  background: #1e1e2e !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 8px !important;
+  color: #e0e0e0 !important;
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+}
+.recharts-tooltip-label {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  margin-bottom: 4px !important;
+}
+.recharts-tooltip-item {
+  color: #d0d0d0 !important;
+  font-size: 12px !important;
+}
+
+/* Minimum font sizes — never go below 12px for readability */
+.text-\[9px\] { font-size: 11px !important; }
+.text-\[10px\] { font-size: 12px !important; }
+.text-\[11px\] { font-size: 12px !important; }
+
+/* Smooth transitions on all interactive elements */
+button, a, input, select, textarea, [role="button"], .transition-all {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Page transitions */
+.page-enter {
+  animation: fadeIn 0.25s ease-out, slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Resizable panels */
+.resizable-panel {
+  transition: width 0.15s ease-out;
+}
+.resize-handle {
+  cursor: col-resize;
+  width: 4px;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.15s;
+}
+.resize-handle:hover, .resize-handle:active {
+  background: var(--primary);
+  opacity: 0.5;
 }
 
 /* Allow text selection only in specific areas */
@@ -329,3 +401,61 @@ nav a, nav button, aside a, aside button {
 }
 
 /* .dark same as :root — app default is dark */
+
+/* ═══ Dynamic color utilities (uses --c CSS variable set on parent) ═══ */
+
+/* Algorithm color classes - for XRay panel and score breakdowns */
+.algo-icon {
+  background: color-mix(in srgb, var(--c) 20%, transparent);
+  border: 1.5px solid var(--c);
+}
+.algo-icon > * { color: var(--c); }
+.algo-line { background: linear-gradient(to bottom, var(--c), var(--border)); }
+.algo-text { color: var(--c); }
+.algo-badge {
+  background: color-mix(in srgb, var(--c) 20%, transparent);
+  color: var(--c);
+  border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+}
+.algo-score-bar {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 30%, transparent), var(--c));
+}
+.algo-marker { box-shadow: 0 0 4px var(--c); }
+
+/* XRay panel structural classes */
+.xray-panel-glass {
+  background: color-mix(in srgb, var(--card) 95%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+.xray-step-card-bg { background: color-mix(in srgb, var(--card) 80%, transparent); }
+.xray-footer-tint { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+
+/* Lottery color classes - used with style={{--c: lottery.color}} on parent */
+.lottery-tab-active {
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+  color: var(--c);
+  border-bottom-color: var(--c);
+}
+.lottery-ring-color {
+  border-color: var(--c);
+  --tw-ring-color: var(--c);
+}
+.lottery-done-pill {
+  background: color-mix(in srgb, var(--c) 12%, transparent);
+  color: var(--c);
+}
+.lottery-import-success-pill {
+  background: color-mix(in srgb, var(--c) 10%, transparent);
+}
+
+/* Quick action icon background */
+.action-icon-bg {
+  background: color-mix(in srgb, var(--c) 15%, transparent);
+}
+
+/* Onboarding lottery selection active state */
+.lottery-select-active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 8%, var(--card));
+}

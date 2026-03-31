@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '@/stores/appStore'
 import { useLotteryStore } from '@/stores/lotteryStore'
 import LotteryTabs from '@/components/LotteryTabs'
@@ -228,12 +228,10 @@ export default function Dashboard({ }: DashboardProps) {
                 key={item.id}
                 onClick={() => setCurrentPage(item.id)}
                 className="bg-card rounded-xl px-4 py-4 border-none cursor-pointer flex items-center gap-3 min-h-[56px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                style={{ '--c': item.color } as React.CSSProperties}
               >
-                <div
-                  className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center shrink-0"
-                  style={{ background: `color-mix(in srgb, ${item.color} 15%, transparent)` }}
-                >
-                  <item.icon size={18} style={{ color: item.color }} />
+                <div className="w-[38px] h-[38px] rounded-[10px] flex items-center justify-center shrink-0 action-icon-bg">
+                  <item.icon size={18} className="[color:var(--c)]" />
                 </div>
                 <span className="text-sm font-bold text-foreground">{item.label}</span>
               </button>
@@ -260,15 +258,15 @@ export default function Dashboard({ }: DashboardProps) {
                         const color = maxLog > 7 ? '#ef4444' : maxLog > 5 ? '#f97316' : maxLog > 3 ? '#eab308' : '#22c55e'
 
                         return (
-                          <div key={i}>
+                          <div key={i} style={{ '--c': color } as React.CSSProperties}>
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-[13px] font-medium">{row.prize}</span>
-                              <span className="text-[13px] font-bold tabular-nums" style={{ color }}>{row.odds}</span>
+                              <span className="text-[13px] font-bold tabular-nums [color:var(--c)]">{row.odds}</span>
                             </div>
                             <div className="h-2 rounded-full overflow-hidden bg-muted">
-                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${barPct}%`, background: color }} />
+                              <div className="h-full rounded-full transition-all duration-500 [background:var(--c)]" style={{ width: `${barPct}%` }} />
                             </div>
-                            <p className="text-[10px] mt-0.5" style={{ color }}>{difficulty}</p>
+                            <p className="text-[10px] mt-0.5 [color:var(--c)]">{difficulty}</p>
                           </div>
                         )
                       })}

@@ -59,6 +59,8 @@ interface XRayPanelProps {
 
 // ═══ Sub-components ═══
 
+const SKELETON_DELAYS = ['', '[animation-delay:150ms]', '[animation-delay:300ms]', '[animation-delay:450ms]', '[animation-delay:600ms]', '[animation-delay:750ms]', '[animation-delay:900ms]', '[animation-delay:1050ms]', '[animation-delay:1200ms]']
+
 function SkeletonStep({ index }: { index: number }) {
   return (
     <div className="flex gap-3 opacity-40">
@@ -70,10 +72,7 @@ function SkeletonStep({ index }: { index: number }) {
         <div className="flex-1 w-0.5 bg-border mt-1" />
       </div>
       {/* Card skeleton */}
-      <div
-        className="flex-1 rounded-[10px] p-3.5 bg-muted min-h-[80px] animate-pulse"
-        style={{ animationDelay: `${index * 150}ms` }}
-      />
+      <div className={`flex-1 rounded-[10px] p-3.5 bg-muted min-h-[80px] animate-pulse ${SKELETON_DELAYS[index] || ''}`} />
     </div>
   )
 }
@@ -84,8 +83,6 @@ function StepCard({ step, isLast }: { step: XRayStep; isLast: boolean }) {
 
   const scoreRange = step.score_max - step.score_min
   const avgPosition = scoreRange > 0 ? ((step.score_avg - step.score_min) / scoreRange) * 100 : 50
-  const minPct = 0
-  const maxPct = 100
 
   const topHeatmap = useMemo(() => {
     return [...step.numbers_heatmap]
@@ -101,36 +98,21 @@ function StepCard({ step, isLast }: { step: XRayStep; isLast: boolean }) {
   const topCandidates = step.candidates_sample.slice(0, 3)
 
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3" style={{ '--c': color } as React.CSSProperties}>
       {/* Pipeline connector */}
       <div className="flex flex-col items-center w-8 shrink-0">
         {/* Icon circle */}
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{
-            background: `color-mix(in srgb, ${color} 20%, transparent)`,
-            border: `1.5px solid ${color}`,
-          }}
-        >
-          <Icon size={14} style={{ color }} />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 algo-icon">
+          <Icon size={14} className="algo-text" />
         </div>
         {/* Vertical line */}
         {!isLast && (
-          <div
-            className="xray-flow-line flex-1 w-0.5 min-h-[16px] mt-1 rounded-[1px]"
-            style={{ background: `linear-gradient(to bottom, ${color}, var(--border))` }}
-          />
+          <div className="xray-flow-line flex-1 w-0.5 min-h-[16px] mt-1 rounded-[1px] algo-line" />
         )}
       </div>
 
       {/* Step card */}
-      <div
-        className="flex-1 rounded-[10px] p-3.5 border border-border"
-        style={{
-          background: 'color-mix(in srgb, var(--card) 80%, transparent)',
-          marginBottom: isLast ? 0 : 4,
-        }}
-      >
+      <div className={`flex-1 rounded-[10px] p-3.5 border border-border xray-step-card-bg ${isLast ? 'mb-0' : 'mb-1'}`}>
         {/* Header: name + duration + candidates */}
         <div className="flex items-center gap-2 mb-2.5">
           <span className="text-xs font-bold text-foreground flex-1">
@@ -149,27 +131,16 @@ function StepCard({ step, isLast }: { step: XRayStep; isLast: boolean }) {
           <div className="mb-2.5">
             <div className="flex justify-between items-center text-[9px] text-muted-foreground mb-1">
               <span>Score min: {step.score_min.toFixed(2)}</span>
-              <span className="font-bold" style={{ color }}>avg: {step.score_avg.toFixed(2)}</span>
+              <span className="font-bold algo-text">avg: {step.score_avg.toFixed(2)}</span>
               <span>max: {step.score_max.toFixed(2)}</span>
             </div>
             <div className="h-1.5 rounded-[3px] overflow-hidden bg-muted relative">
               {/* Range bar (min to max) */}
-              <div
-                className="xray-score-bar absolute h-full rounded-[3px]"
-                style={{
-                  left: `${minPct}%`,
-                  width: `${maxPct - minPct}%`,
-                  background: `linear-gradient(90deg, color-mix(in srgb, ${color} 30%, transparent), ${color})`,
-                }}
-              />
+              <div className="xray-score-bar algo-score-bar absolute h-full rounded-[3px] left-0 w-full" />
               {/* Avg marker */}
               <div
-                className="absolute w-[3px] h-2 rounded-[1px] bg-foreground -top-px"
-                style={{
-                  left: `${avgPosition}%`,
-                  transform: 'translateX(-50%)',
-                  boxShadow: `0 0 4px ${color}`,
-                }}
+                className="absolute w-[3px] h-2 rounded-[1px] bg-foreground -top-px -translate-x-1/2 algo-marker"
+                style={{ left: `${avgPosition}%` }}
               />
             </div>
           </div>
@@ -191,18 +162,13 @@ function StepCard({ step, isLast }: { step: XRayStep; isLast: boolean }) {
                     {cand.numbers.map((n) => (
                       <span
                         key={n}
-                        className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[8px] font-[800] tabular-nums"
-                        style={{
-                          background: `color-mix(in srgb, ${color} 20%, transparent)`,
-                          color: color,
-                          border: `1px solid color-mix(in srgb, ${color} 40%, transparent)`,
-                        }}
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[8px] font-[800] tabular-nums algo-badge"
                       >
                         {String(n).padStart(2, '0')}
                       </span>
                     ))}
                   </div>
-                  <span className="text-[9px] font-bold tabular-nums shrink-0" style={{ color }}>
+                  <span className="text-[9px] font-bold tabular-nums shrink-0 algo-text">
                     {(cand.score * 100).toFixed(0)}
                   </span>
                 </div>
@@ -268,13 +234,7 @@ export default function XRayPanel({ open, onClose, steps, summary, loading, loop
       />
 
       {/* Panel */}
-      <div className="xray-panel-enter fixed right-0 top-0 h-screen w-[480px] z-50 flex flex-col border-l border-border shadow-[-8px_0_40px_rgba(0,0,0,0.3)]"
-        style={{
-          background: 'color-mix(in srgb, var(--card) 95%, transparent)',
-          backdropFilter: 'blur(24px) saturate(1.4)',
-          WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-        }}
-      >
+      <div className="xray-panel-enter fixed right-0 top-0 h-screen w-[480px] z-50 flex flex-col border-l border-border shadow-[-8px_0_40px_rgba(0,0,0,0.3)] xray-panel-glass">
         {/* Header */}
         <div className="px-5 py-4 shrink-0 border-b border-border flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--chart-3)] to-primary flex items-center justify-center">
@@ -334,10 +294,7 @@ export default function XRayPanel({ open, onClose, steps, summary, loading, loop
 
         {/* Summary footer */}
         {summary && (
-          <div
-            className="px-5 py-3.5 shrink-0 border-t border-border"
-            style={{ background: 'color-mix(in srgb, var(--primary) 4%, transparent)' }}
-          >
+          <div className="px-5 py-3.5 shrink-0 border-t border-border xray-footer-tint">
             {/* Funnel visualization */}
             <div className="mb-3">
               <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-muted-foreground flex items-center gap-[5px] mb-2">

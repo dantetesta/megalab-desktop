@@ -364,17 +364,16 @@ function LotteryCard({
   const anyBusy = Object.values(_syncGames).some(g => g.status === 'syncing' || g.status === 'checking')
 
   return (
-    <Card className={cn(
-      'transition-all',
-      !isOn && 'opacity-50',
-      isPri && 'ring-2',
-    )} style={isPri ? { borderColor: l.color, '--tw-ring-color': l.color } as React.CSSProperties : undefined}>
+    <Card
+      className={cn('transition-all', !isOn && 'opacity-50', isPri && 'ring-2 lottery-ring-color')}
+      style={{ '--c': l.color } as React.CSSProperties}
+    >
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: l.color }} />
+          <div className="w-2.5 h-2.5 rounded-full shrink-0 [background:var(--c)]" />
           <span className="text-sm font-bold flex-1 text-foreground">{l.display_name}</span>
-          <button onClick={onSetPrimary} title="Principal" className={cn('bg-transparent border-none cursor-pointer p-0.5 flex transition-opacity', isPri ? 'opacity-100' : 'opacity-30 text-muted-foreground')} style={isPri ? { color: l.color } : undefined}>
+          <button onClick={onSetPrimary} title="Principal" className={cn('bg-transparent border-none cursor-pointer p-0.5 flex transition-opacity', isPri ? 'opacity-100 [color:var(--c)]' : 'opacity-30 text-muted-foreground')}>
             <Star size={15} fill={isPri ? 'currentColor' : 'none'} />
           </button>
           <Switch checked={isOn} onCheckedChange={onToggle} disabled={isBusy} />
@@ -383,7 +382,7 @@ function LotteryCard({
         {/* Info row */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <StatusIcon status={gameState.status} color={l.color} />
+            <StatusIcon status={gameState.status} />
             <span className="text-[11px] font-medium text-muted-foreground">{isOn ? 'Habilitada' : 'Desabilitada'}</span>
           </div>
           {cnt > 0 && <span className="text-[10px] text-muted-foreground">{cnt.toLocaleString('pt-BR')} concursos</span>}
@@ -393,7 +392,7 @@ function LotteryCard({
         {isSyncing && (
           <div className="mb-2">
             <div className="w-full h-1 rounded bg-muted overflow-hidden">
-              <div className="h-full rounded animate-pulse" style={{ background: l.color, width: '100%' }} />
+              <div className="h-full rounded animate-pulse w-full [background:var(--c)]" />
             </div>
           </div>
         )}
@@ -403,10 +402,10 @@ function LotteryCard({
           <div className={cn(
             'text-[11px] mb-2 font-semibold leading-snug',
             isError && 'text-destructive',
-            isDone && !isError && 'lottery-text-on-tint',
+            isDone && !isError && '[color:var(--c)]',
             isPaused && 'text-amber-500',
             !isError && !isDone && !isPaused && 'text-muted-foreground',
-          )} style={isDone && !isError ? { color: l.color } : undefined}>
+          )}>
             {gameState.message}
           </div>
         )}
@@ -435,7 +434,7 @@ function LotteryCard({
                 <Square size={12} /> Parar
               </Button>
             ) : isDone && gameState.missing === 0 ? (
-              <div className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold lottery-text-on-tint" style={{ background: `color-mix(in srgb, ${l.color} 12%, transparent)`, color: l.color }}>
+              <div className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold lottery-done-pill">
                 <CheckCircle size={13} /> Atualizado
               </div>
             ) : isError ? (
@@ -444,7 +443,7 @@ function LotteryCard({
               </Button>
             ) : (
               <>
-                <Button size="sm" onClick={onSync} disabled={anyBusy} className="flex-1 gap-1.5 lottery-btn" style={{ background: l.color }}>
+                <Button size="sm" onClick={onSync} disabled={anyBusy} className="flex-1 gap-1.5 lottery-btn [background:var(--c)]">
                   <RefreshCw size={12} /> Sincronizar
                 </Button>
                 <Button variant="outline" size="sm" onClick={onCheck} disabled={anyBusy} title="Verificar status">
@@ -460,11 +459,11 @@ function LotteryCard({
 }
 
 /* Status Icon */
-function StatusIcon({ status, color }: { status: GameSyncState['status']; color: string }) {
+function StatusIcon({ status }: { status: GameSyncState['status'] }) {
   switch (status) {
-    case 'checking': return <Loader2 size={12} className="animate-spin" style={{ color }} />
-    case 'syncing': return <Loader2 size={12} className="animate-spin" style={{ color }} />
-    case 'done': return <CheckCircle size={12} style={{ color }} />
+    case 'checking': return <Loader2 size={12} className="animate-spin [color:var(--c)]" />
+    case 'syncing': return <Loader2 size={12} className="animate-spin [color:var(--c)]" />
+    case 'done': return <CheckCircle size={12} className="[color:var(--c)]" />
     case 'error': return <AlertCircle size={12} className="text-destructive" />
     case 'paused': return <Square size={12} className="text-amber-500" />
     default: return null
@@ -513,10 +512,10 @@ function BetPriceEditor({ lottery }: { lottery: LotteryConfig }) {
   const fmt = (v: number | null | undefined) => v && typeof v === 'number' ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '--'
 
   return (
-    <Card>
+    <Card style={{ '--c': lottery.color } as React.CSSProperties}>
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-2.5">
-          <div className="w-2 h-2 rounded-full" style={{ background: lottery.color }} />
+          <div className="w-2 h-2 rounded-full [background:var(--c)]" />
           <span className="text-[13px] font-bold flex-1">{lottery.display_name}</span>
           {!editing ? (
             <Button variant="ghost" size="sm" onClick={startEditing} className="gap-1 text-[11px] font-semibold text-primary h-7 px-2">
@@ -538,8 +537,7 @@ function BetPriceEditor({ lottery }: { lottery: LotteryConfig }) {
                   type="text"
                   value={editValues[p] || ''}
                   onChange={e => setEditValues(prev => ({ ...prev, [p]: e.target.value }))}
-                  className="w-[70px] text-right text-[13px] font-bold h-7 px-1.5"
-                  style={{ borderColor: lottery.color }}
+                  className="w-[70px] text-right text-[13px] font-bold h-7 px-1.5 [border-color:var(--c)]"
                   placeholder="0.00"
                 />
               ) : (
@@ -602,10 +600,10 @@ function SqlImportList({ catalog, counts, onImported }: { catalog: LotteryConfig
         const cnt = counts[item.game_type] || 0
 
         return (
-          <Card key={item.game_type} className={cn('transition-all', success && 'ring-1')} style={success ? { borderColor: color } : undefined}>
+          <Card key={item.game_type} className={cn('transition-all', success && 'ring-1 [border-color:var(--c)]')} style={{ '--c': color } as React.CSSProperties}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2.5 mb-2">
-                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                <div className="w-2.5 h-2.5 rounded-full shrink-0 [background:var(--c)]" />
                 <span className="text-[13px] font-bold flex-1 text-foreground">{item.label}</span>
                 {cnt > 0 && <span className="text-[10px] text-muted-foreground">{cnt.toLocaleString('pt-BR')}</span>}
               </div>
@@ -618,17 +616,16 @@ function SqlImportList({ catalog, counts, onImported }: { catalog: LotteryConfig
               )}
 
               {success && !isLoading && (
-                <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 rounded-lg" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
-                  <CheckCircle size={13} style={{ color }} className="shrink-0 lottery-text-on-tint" />
-                  <span className="text-[11px] font-semibold lottery-text-on-tint" style={{ color }}>Importado com sucesso!</span>
+                <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 rounded-lg lottery-import-success-pill">
+                  <CheckCircle size={13} className="shrink-0 [color:var(--c)]" />
+                  <span className="text-[11px] font-semibold [color:var(--c)]">Importado com sucesso!</span>
                 </div>
               )}
 
               <Button
                 onClick={() => handleDownload(item)}
                 disabled={isLoading}
-                className={cn('w-full gap-1.5', !isLoading && 'lottery-btn')}
-                style={!isLoading ? { background: color } : undefined}
+                className={cn('w-full gap-1.5', !isLoading && 'lottery-btn [background:var(--c)]')}
                 variant={isLoading ? 'secondary' : 'default'}
               >
                 {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}

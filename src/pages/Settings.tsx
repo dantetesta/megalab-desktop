@@ -575,7 +575,7 @@ function SqlImportList({ catalog, counts, onImported }: { catalog: LotteryConfig
     setErrors(prev => { const n = { ...prev }; delete n[item.game_type]; return n })
     setSuccesses(prev => { const n = { ...prev }; delete n[item.game_type]; return n })
     try {
-      const url = `https://dantetesta.com.br/lotolab/loterias/${item.file}`
+      const url = `https://github.com/dantetesta/LotoLogic/releases/download/data/${item.file}`
       const result = await api.downloadAndImportSql(url, item.game_type)
       setSuccesses(prev => ({ ...prev, [item.game_type]: true }))
       showToast(`${item.label}: ${result}`, 'success')

@@ -78,7 +78,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         try {
           const item = LOTTERY_LIST.find(l => l.game_type === gt)
           if (!item) throw new Error('Loteria nao encontrada')
-          const url = `https://dantetesta.com.br/lotolab/loterias/${item.file}`
+          const url = `https://github.com/dantetesta/LotoLogic/releases/download/data/${item.file}`
           const result = await api.downloadAndImportSql(url, gt)
           results[gt] = { status: 'done', message: result }
         } catch (e: unknown) {

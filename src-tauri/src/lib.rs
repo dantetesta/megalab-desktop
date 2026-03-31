@@ -1203,7 +1203,8 @@ fn get_credits_data() -> Result<CreditsData, String> {
     Ok(CreditsData {
         author: "Dante Testa".to_string(),
         pix_key: "Dante.testa@gmail.com".to_string(),
-        website: "https://dantetesta.com.br".to_string(),
+        website: "https://lotologic.com.br".to_string(),
+        github_url: "https://github.com/dantetesta/LotoLogic".to_string(),
         academy_website: "https://academy.dantetesta.com.br".to_string(),
         phone: String::new(),
         whatsapp: String::new(),

@@ -256,6 +256,7 @@ pub struct CreditsData {
     pub author: String,
     pub pix_key: String,
     pub website: String,
+    pub github_url: String,
     pub academy_website: String,
     pub phone: String,
     pub whatsapp: String,

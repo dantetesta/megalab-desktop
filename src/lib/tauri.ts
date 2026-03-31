@@ -138,6 +138,7 @@ export interface CreditsData {
   author: string
   pix_key: string
   website: string
+  github_url: string
   academy_website: string
   phone: string
   whatsapp: string

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, type CreditsData } from '@/lib/tauri'
 import { useAppStore } from '@/stores/appStore'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { Copy, Globe, ExternalLink, GraduationCap, Loader2, CheckCircle, Send } from 'lucide-react'
+import { Copy, Globe, ExternalLink, GraduationCap, Loader2, CheckCircle, Send, Github } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -72,44 +72,62 @@ export default function Creditos() {
         </div>
 
         {/* Links */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           <a href={credits.website} target="_blank" rel="noopener noreferrer" className="no-underline">
-            <Card className="hover:bg-accent transition-colors">
+            <Card className="hover:bg-accent transition-colors h-full">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[10px] bg-primary/12 flex items-center justify-center shrink-0">
                   <Globe size={18} className="text-primary" />
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold text-foreground">Site Oficial</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{credits.website.replace(/^https?:\/\//, '')}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Download, tutoriais e novidades</div>
+                  <div className="text-[10px] text-primary/70 mt-0.5 font-mono">lotologic.com.br</div>
+                </div>
+                <ExternalLink size={14} className="text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </a>
+          <a href={credits.github_url} target="_blank" rel="noopener noreferrer" className="no-underline">
+            <Card className="hover:bg-accent transition-colors h-full">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[10px] bg-zinc-500/12 flex items-center justify-center shrink-0">
+                  <Github size={18} className="text-zinc-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-foreground">Repositório</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Código aberto no GitHub</div>
+                  <div className="text-[10px] text-zinc-400/70 mt-0.5 font-mono">github.com/dantetesta/LotoLogic</div>
                 </div>
                 <ExternalLink size={14} className="text-muted-foreground" />
               </CardContent>
             </Card>
           </a>
           <a href={credits.academy_website} target="_blank" rel="noopener noreferrer" className="no-underline">
-            <Card className="hover:bg-accent transition-colors">
+            <Card className="hover:bg-accent transition-colors h-full">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[10px] bg-blue-500/12 flex items-center justify-center shrink-0">
                   <GraduationCap size={18} className="text-blue-400" />
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold text-foreground">Academy</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">{credits.academy_website.replace(/^https?:\/\//, '')}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Cursos e treinamentos</div>
+                  <div className="text-[10px] text-blue-400/70 mt-0.5 font-mono">academy.dantetesta.com.br</div>
                 </div>
                 <ExternalLink size={14} className="text-muted-foreground" />
               </CardContent>
             </Card>
           </a>
           <a href="https://t.me/+OrYQ9YkFxN8xZDhh" target="_blank" rel="noopener noreferrer" className="no-underline">
-            <Card className="hover:bg-accent transition-colors">
+            <Card className="hover:bg-accent transition-colors h-full">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[10px] bg-sky-500/12 flex items-center justify-center shrink-0">
                   <Send size={18} className="text-sky-400" />
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold text-foreground">Telegram</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">Grupo oficial</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Grupo oficial da comunidade</div>
+                  <div className="text-[10px] text-sky-400/70 mt-0.5 font-mono">t.me/lotologic</div>
                 </div>
                 <ExternalLink size={14} className="text-muted-foreground" />
               </CardContent>

@@ -4,7 +4,7 @@ import BannerCarousel from '@/components/BannerCarousel'
 
 const navItems = [
   { id: 'dashboard', label: 'Inicio', icon: Home },
-  { id: 'lotocore', label: 'Gerador Pro', icon: Cpu },
+  { id: 'lotocore', label: 'Logic Pro', icon: Cpu },
   { id: 'concursos', label: 'Concursos', icon: Search },
   { id: 'gerador', label: 'Gerador', icon: Dices },
   { id: 'assistente', label: 'Assistente IA', icon: MessageSquare },
@@ -26,7 +26,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
     <aside className="w-[220px] shrink-0 h-screen flex flex-col bg-card border-r border-border animate-slide-in-left">
       {/* Logo + close */}
       <div className="px-3 pt-3 pb-1 flex items-center justify-between">
-        <img src="/logo.png" alt="LotoLab" className="h-[80px] object-contain" />
+        <img src="/logo-lotologic.png" alt="LotoLogic" className="h-[80px] object-contain" />
         <button onClick={onClose} className="w-7 h-7 rounded-md hover:bg-accent flex items-center justify-center text-muted-foreground">
           <ChevronLeft size={16} />
         </button>
@@ -57,7 +57,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       <div className="px-3 pb-3 text-[10px] text-muted-foreground/50">
-        LotoLab Core Engine v4.2.4
+        LotoLogic v4.2.5
       </div>
     </aside>
   )

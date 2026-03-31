@@ -165,7 +165,7 @@ export default function Dashboard({ }: DashboardProps) {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-[1.4rem] font-bold tracking-tight">Inicio</h2>
-          <p className="text-[13px] text-muted-foreground mt-0.5">Visao geral do seu LotoLab</p>
+          <p className="text-[13px] text-muted-foreground mt-0.5">Visao geral do seu LotoLogic</p>
         </div>
         {!dashboard.db_is_empty && (
           <Button size="sm" onClick={handleSyncAll} disabled={syncingAll} className="gap-1.5">
@@ -198,7 +198,7 @@ export default function Dashboard({ }: DashboardProps) {
         <Card className="py-12 px-10 text-center">
           <CardContent className="flex flex-col items-center p-0">
             <Database size={40} className="text-primary mb-4" />
-            <h3 className="text-xl font-bold mb-2.5">Bem-vindo ao LotoLab!</h3>
+            <h3 className="text-xl font-bold mb-2.5">Bem-vindo ao LotoLogic!</h3>
             <p className="text-muted-foreground max-w-[440px] mb-6 leading-relaxed">
               Para comecar, importe a base de dados em <strong>Configuracoes</strong> ou restaure um backup existente.
             </p>

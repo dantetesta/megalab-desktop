@@ -66,7 +66,7 @@ const MODEL_OPTIONS: Record<string, string[]> = {
   gemini: ['gemini-2.0-flash', 'gemini-2.5-flash'],
 }
 
-const WELCOME_CONTENT = `Oi! Sou o LotoLab AI, seu assistente de loterias! 🎯
+const WELCOME_CONTENT = `Oi! Sou o LotoLogic AI, seu assistente de loterias! 🎯
 
 Tenho acesso direto aos dados dos concursos no seu banco de dados. Posso te ajudar com:
 

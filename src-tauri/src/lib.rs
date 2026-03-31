@@ -550,7 +550,7 @@ fn format_all_games_for_clipboard(games: Vec<Vec<i32>>) -> Result<String, String
         lines.push(format!("Jogo {}: {}", i + 1, text));
     }
     lines.push(String::new());
-    lines.push("Gerado pelo app LotoLab Core Engine".to_string());
+    lines.push("Gerado pelo app LotoLogic".to_string());
     Ok(lines.join("\n"))
 }
 
@@ -933,7 +933,7 @@ fn generate_games_pdf_html(state: State<Arc<AppState>>) -> Result<String, String
   @media print { body { padding: 20px; } }
 </style></head><body>
 <h1>MEUS JOGOS</h1>
-<div class="subtitle">Gerado pelo LotoLab Core Engine</div>
+<div class="subtitle">Gerado pelo LotoLogic</div>
 "#);
     for (i, g) in games.iter().enumerate() {
         html.push_str(&format!(r#"<div class="game"><div class="game-num">Jogo {}</div><div class="balls">"#, i + 1));
@@ -942,7 +942,7 @@ fn generate_games_pdf_html(state: State<Arc<AppState>>) -> Result<String, String
         }
         html.push_str(&format!(r#"</div><div class="meta">{} · {}</div></div>"#, g.strategy_label, g.created_at.split('T').next().unwrap_or(&g.created_at)));
     }
-    html.push_str(r#"<div class="footer">LotoLab Core Engine — dantetesta.com.br</div></body></html>"#);
+    html.push_str(r#"<div class="footer">LotoLogic — dantetesta.com.br</div></body></html>"#);
     Ok(html)
 }
 
@@ -1211,7 +1211,7 @@ fn get_credits_data() -> Result<CreditsData, String> {
         api_credit: "Dados consultados via loterias-api de guto-alves".to_string(),
         app_version: "4.0.0".to_string(),
         message_headline: "Créditos".to_string(),
-        message_body: "O LotoLab foi idealizado e desenvolvido por Dante Testa. Se este aplicativo te ajudou a organizar melhor seus jogos, analisar resultados ou até mudar sua sorte, lembre com carinho de quem construiu essa ferramenta para você.".to_string(),
+        message_body: "O LotoLogic foi idealizado e desenvolvido por Dante Testa. Se este aplicativo te ajudou a organizar melhor seus jogos, analisar resultados ou até mudar sua sorte, lembre com carinho de quem construiu essa ferramenta para você.".to_string(),
         pix_note: "Quer agradecer de forma espontânea? Meu Pix está logo abaixo.".to_string(),
     })
 }

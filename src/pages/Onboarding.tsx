@@ -109,10 +109,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       <div className="h-screen flex flex-col items-center justify-center bg-background p-10">
         <div className="flex flex-col items-center text-center max-w-[520px] gap-6 animate-scale-in">
           <div className="rounded-2xl overflow-hidden max-w-[420px] w-full">
-            <img src="/author.png" alt="LotoLab" className="w-full block" />
+            <img src="/foto-de-entrada-e-creditos-do-autor.png" alt="LotoLogic" className="w-full block" />
           </div>
           <div className="flex flex-col items-center gap-2">
-            <h1 className="text-[28px] font-extrabold text-foreground">Bem-vindo ao LotoLab!</h1>
+            <h1 className="text-[28px] font-extrabold text-foreground">Bem-vindo ao LotoLogic!</h1>
             <p className="text-sm leading-relaxed text-muted-foreground max-w-[400px]">
               Sua ferramenta completa de analise para loterias CAIXA.
             </p>
@@ -250,7 +250,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             {finishing ? (
               <>
                 <Loader2 size={18} className="animate-spin text-primary" />
-                <span className="text-sm font-semibold text-primary">Entrando no LotoLab...</span>
+                <span className="text-sm font-semibold text-primary">Entrando no LotoLogic...</span>
               </>
             ) : (
               <>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, type CreditsData } from '@/lib/tauri'
 import { useAppStore } from '@/stores/appStore'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { Copy, Globe, ExternalLink, GraduationCap, Loader2, CheckCircle } from 'lucide-react'
+import { Copy, Globe, ExternalLink, GraduationCap, Loader2, CheckCircle, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -42,7 +42,7 @@ export default function Creditos() {
       <div className="max-w-[720px] mx-auto">
         {/* Cover image */}
         <div className="rounded-xl overflow-hidden mb-6">
-          <img src="/author.png" alt="Dante Testa - LotoLab" className="w-full block" />
+          <img src="/foto-de-entrada-e-creditos-do-autor.png" alt="Dante Testa - LotoLogic" className="w-full block" />
         </div>
 
         {/* 2-column layout */}
@@ -72,7 +72,7 @@ export default function Creditos() {
         </div>
 
         {/* Links */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-3 mb-6">
           <a href={credits.website} target="_blank" rel="noopener noreferrer" className="no-underline">
             <Card className="hover:bg-accent transition-colors">
               <CardContent className="p-4 flex items-center gap-3">
@@ -101,12 +101,26 @@ export default function Creditos() {
               </CardContent>
             </Card>
           </a>
+          <a href="https://t.me/+OrYQ9YkFxN8xZDhh" target="_blank" rel="noopener noreferrer" className="no-underline">
+            <Card className="hover:bg-accent transition-colors">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[10px] bg-sky-500/12 flex items-center justify-center shrink-0">
+                  <Send size={18} className="text-sky-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-foreground">Telegram</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Grupo oficial</div>
+                </div>
+                <ExternalLink size={14} className="text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </a>
         </div>
 
         {/* Footer */}
         <div className="text-center py-2">
           <p className="text-[11px] text-muted-foreground">{credits.api_credit}</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-1">LotoLab v{credits.app_version}</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-1">LotoLogic v{credits.app_version}</p>
         </div>
       </div>
     </div>

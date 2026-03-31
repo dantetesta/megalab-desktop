@@ -1,7 +1,7 @@
 [package]
 name = "lotolab"
-version = "4.2.4"
-description = "LotoLab - Laboratório de Loterias CAIXA"
+version = "4.2.5"
+description = "LotoLogic - Laboratório de Loterias CAIXA"
 authors = ["Dante Testa"]
 license = "MIT"
 edition = "2021"

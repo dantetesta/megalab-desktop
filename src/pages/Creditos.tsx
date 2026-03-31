@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { api, type CreditsData } from '@/lib/tauri'
 import { useAppStore } from '@/stores/appStore'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { Copy, Globe, ExternalLink, GraduationCap, Loader2, CheckCircle, Send, Github } from 'lucide-react'
+import { Copy, Globe, ExternalLink, GraduationCap, Loader2, CheckCircle, Send, Code2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -92,7 +92,7 @@ export default function Creditos() {
             <Card className="hover:bg-accent transition-colors h-full">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[10px] bg-zinc-500/12 flex items-center justify-center shrink-0">
-                  <Github size={18} className="text-zinc-400" />
+                  <Code2 size={18} className="text-zinc-400" />
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold text-foreground">Repositório</div>

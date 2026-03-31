@@ -57,7 +57,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       <div className="px-3 pb-3 text-[10px] text-muted-foreground/50">
-        LotoLogic v4.2.5
+        LotoLogic v4.2.6
       </div>
     </aside>
   )

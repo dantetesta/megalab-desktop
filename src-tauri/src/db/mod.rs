@@ -1342,8 +1342,13 @@ impl Database {
     pub fn seed_default_prices(&self, prices: &[(String, i32, f64)]) -> Result<(), String> {
         let conn = self.conn.lock().map_err(|e| e.to_string())?;
         for (game_type, pick_count, price) in prices {
+            // Update existing default prices (is_default=1) to the new value.
+            // Insert new entries (new pick counts, e.g. Super Sete 16-21) that don't exist yet.
+            // Never overwrite user-customized prices (is_default=0).
             conn.execute(
-                "INSERT OR IGNORE INTO bet_price_rules (game_type, pick_count, price_value, is_default) VALUES (?1, ?2, ?3, 1)",
+                "INSERT INTO bet_price_rules (game_type, pick_count, price_value, is_default) VALUES (?1, ?2, ?3, 1)
+                 ON CONFLICT(game_type, pick_count) DO UPDATE SET price_value=excluded.price_value, updated_at=datetime('now')
+                 WHERE is_default=1",
                 params![game_type, pick_count, price]
             ).map_err(|e| e.to_string())?;
         }

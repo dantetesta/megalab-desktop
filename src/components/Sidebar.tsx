@@ -57,7 +57,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       <div className="px-3 pb-3 text-[10px] text-muted-foreground/50">
-        LotoLab Core Engine v4.2.3
+        LotoLab Core Engine v4.2.4
       </div>
     </aside>
   )

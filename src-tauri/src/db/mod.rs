@@ -1257,9 +1257,20 @@ impl Database {
         // Uses a proper SQL-aware splitter that respects single-quoted string literals,
         // so semicolons inside JSON/text fields don't break INSERT statements.
         for statement in split_sql_statements_safe(sql) {
-            let stmt = statement.trim();
+            // Strip leading comment lines (-- ...) from the statement.
+            // The SQL file embeds batch headers like:
+            //   -- Atualizacao incremental | concursos 1-50
+            //   INSERT OR IGNORE INTO contests ...
+            // The splitter groups the comment + INSERT into one statement (no ';' between them).
+            // If we skip the whole statement when it starts with '--', we lose 1 contest per batch
+            // (60 contests total across 60 batches of 50). Instead, strip the comments and keep the SQL.
+            let cleaned: String = statement
+                .lines()
+                .filter(|line| !line.trim().starts_with("--"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = cleaned.trim();
             if stmt.is_empty() { continue; }
-            if stmt.starts_with("--") { continue; } // skip comments
 
             // Skip transaction commands
             let upper = stmt.to_uppercase();

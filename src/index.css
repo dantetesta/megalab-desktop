@@ -10,39 +10,39 @@
 
 /* ═══ DARK THEME (default — app starts in dark) ═══ */
 :root {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.22 0.012 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.22 0.012 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.27 292.759);
-  --primary-foreground: oklch(0.969 0.016 293.756);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.78 0.015 286.067);
-  --accent: oklch(0.30 0.02 292);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: hsl(265 10% 8%);
+  --foreground: hsl(0 0% 97%);
+  --card: hsl(265 12% 16%);
+  --card-foreground: hsl(0 0% 97%);
+  --popover: hsl(265 12% 16%);
+  --popover-foreground: hsl(0 0% 97%);
+  --primary: hsl(271 76% 53%);
+  --primary-foreground: hsl(272 40% 95%);
+  --secondary: hsl(265 8% 20%);
+  --secondary-foreground: hsl(0 0% 97%);
+  --muted: hsl(265 8% 20%);
+  --muted-foreground: hsl(265 10% 72%);
+  --accent: hsl(270 14% 22%);
+  --accent-foreground: hsl(0 0% 97%);
+  --destructive: hsl(15 70% 55%);
   --destructive-foreground: #fafafa;
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --chart-1: oklch(0.897 0.196 126.665);
-  --chart-2: oklch(0.768 0.233 130.85);
-  --chart-3: oklch(0.648 0.2 131.684);
-  --chart-4: oklch(0.532 0.157 131.589);
-  --chart-5: oklch(0.453 0.124 130.933);
+  --border: hsla(0, 0%, 100%, 0.14);
+  --input: hsla(0, 0%, 100%, 0.15);
+  --ring: hsl(265 10% 45%);
+  --chart-1: hsl(116 55% 70%);
+  --chart-2: hsl(120 55% 55%);
+  --chart-3: hsl(122 50% 45%);
+  --chart-4: hsl(122 45% 35%);
+  --chart-5: hsl(121 42% 28%);
   --radius: 0.45rem;
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.70 0.27 292.717);
-  --sidebar-primary-foreground: oklch(0.969 0.016 293.756);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
+  --sidebar: hsl(265 10% 14%);
+  --sidebar-foreground: hsl(0 0% 97%);
+  --sidebar-primary: hsl(271 80% 58%);
+  --sidebar-primary-foreground: hsl(272 40% 95%);
+  --sidebar-accent: hsl(265 8% 20%);
+  --sidebar-accent-foreground: hsl(0 0% 97%);
+  --sidebar-border: hsla(0, 0%, 100%, 0.10);
+  --sidebar-ring: hsl(265 10% 45%);
 
   --ml-glass-bg: rgba(20, 29, 32, 0.85);
   --ml-glass-border: rgba(62, 73, 66, 0.5);
@@ -161,11 +161,11 @@ nav a, nav button, aside a, aside button {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  background: rgba(160, 160, 175, 0.3);
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  background: rgba(160, 160, 175, 0.5);
 }
 
 /* ═══ Glass morphism ═══ */
@@ -248,7 +248,7 @@ nav a, nav button, aside a, aside button {
 .animate-pulse { animation: pulse 2s ease-in-out infinite; }
 .animate-spin { animation: spin 1s linear infinite; }
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 10%, transparent), transparent);
+  background: linear-gradient(90deg, transparent, rgba(130, 80, 220, 0.1), transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -406,56 +406,92 @@ nav a, nav button, aside a, aside button {
 
 /* Algorithm color classes - for XRay panel and score breakdowns */
 .algo-icon {
-  background: color-mix(in srgb, var(--c) 20%, transparent);
+  background: rgba(128, 128, 128, 0.2);
   border: 1.5px solid var(--c);
+}
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .algo-icon { background: color-mix(in srgb, var(--c) 20%, transparent); }
 }
 .algo-icon > * { color: var(--c); }
 .algo-line { background: linear-gradient(to bottom, var(--c), var(--border)); }
 .algo-text { color: var(--c); }
 .algo-badge {
-  background: color-mix(in srgb, var(--c) 20%, transparent);
+  background: rgba(128, 128, 128, 0.2);
   color: var(--c);
-  border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  border: 1px solid var(--c);
+}
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .algo-badge {
+    background: color-mix(in srgb, var(--c) 20%, transparent);
+    border-color: color-mix(in srgb, var(--c) 40%, transparent);
+  }
 }
 .algo-score-bar {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 30%, transparent), var(--c));
+  background: var(--c);
+}
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .algo-score-bar { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 30%, transparent), var(--c)); }
 }
 .algo-marker { box-shadow: 0 0 4px var(--c); }
 
 /* XRay panel structural classes */
 .xray-panel-glass {
-  background: color-mix(in srgb, var(--card) 95%, transparent);
+  background: var(--card);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
 }
-.xray-step-card-bg { background: color-mix(in srgb, var(--card) 80%, transparent); }
-.xray-footer-tint { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .xray-panel-glass { background: color-mix(in srgb, var(--card) 95%, transparent); }
+}
+.xray-step-card-bg { background: var(--card); }
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .xray-step-card-bg { background: color-mix(in srgb, var(--card) 80%, transparent); }
+}
+.xray-footer-tint { background: rgba(130, 80, 220, 0.04); }
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .xray-footer-tint { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+}
 
 /* Lottery color classes - used with style={{--c: lottery.color}} on parent */
 .lottery-tab-active {
-  background: color-mix(in srgb, var(--c) 10%, transparent);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--c);
   border-bottom-color: var(--c);
+}
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .lottery-tab-active { background: color-mix(in srgb, var(--c) 10%, transparent); }
 }
 .lottery-ring-color {
   border-color: var(--c);
   --tw-ring-color: var(--c);
 }
 .lottery-done-pill {
-  background: color-mix(in srgb, var(--c) 12%, transparent);
+  background: rgba(128, 128, 128, 0.12);
   color: var(--c);
 }
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .lottery-done-pill { background: color-mix(in srgb, var(--c) 12%, transparent); }
+}
 .lottery-import-success-pill {
-  background: color-mix(in srgb, var(--c) 10%, transparent);
+  background: rgba(128, 128, 128, 0.1);
+}
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .lottery-import-success-pill { background: color-mix(in srgb, var(--c) 10%, transparent); }
 }
 
 /* Quick action icon background */
 .action-icon-bg {
-  background: color-mix(in srgb, var(--c) 15%, transparent);
+  background: rgba(128, 128, 128, 0.15);
+}
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .action-icon-bg { background: color-mix(in srgb, var(--c) 15%, transparent); }
 }
 
 /* Onboarding lottery selection active state */
 .lottery-select-active {
   border-color: var(--c);
-  background: color-mix(in srgb, var(--c) 8%, var(--card));
+  background: var(--card);
+}
+@supports (background: color-mix(in srgb, red 50%, blue)) {
+  .lottery-select-active { background: color-mix(in srgb, var(--c) 8%, var(--card)); }
 }

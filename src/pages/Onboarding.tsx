@@ -109,7 +109,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       <div className="h-screen flex flex-col items-center justify-center bg-background p-10">
         <div className="flex flex-col items-center text-center max-w-[520px] gap-6 animate-scale-in">
           <div className="rounded-2xl overflow-hidden max-w-[420px] w-full">
-            <img src="/foto-de-entrada-e-creditos-do-autor.png" alt="LotoLogic" className="w-full block" />
+            <img src="/lotologic-image-start.jpg" alt="LotoLogic" className="w-full block" />
           </div>
           <div className="flex flex-col items-center gap-2">
             <h1 className="text-[28px] font-extrabold text-foreground">Bem-vindo ao LotoLogic!</h1>
@@ -117,7 +117,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               Sua ferramenta completa de analise para loterias CAIXA.
             </p>
           </div>
-          <Button size="lg" onClick={() => setStep(2)} className="text-base px-12 py-4">Iniciar</Button>
+          <Button size="lg" onClick={() => { api.trackFirstInstall(); setStep(2) }} className="text-base px-12 py-4">Iniciar</Button>
         </div>
       </div>
     )

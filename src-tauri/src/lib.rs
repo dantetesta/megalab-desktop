@@ -1260,8 +1260,13 @@ fn ai_query_db(state: State<Arc<AppState>>, sql: String) -> Result<String, Strin
 fn track_page(page: String) {
     analytics::track_event("page_view", serde_json::json!({
         "page_title": page,
-        "app_version": "4.0.0",
+        "app_version": env!("CARGO_PKG_VERSION"),
     }));
+}
+
+#[tauri::command]
+fn track_first_install_cmd() {
+    analytics::track_first_install();
 }
 
 #[tauri::command]
@@ -1592,10 +1597,14 @@ pub fn run() {
             }
 
             // Auto-import lunar calendar in background thread (fire and forget)
+            // Uses short-lived lock batches to avoid blocking the UI
             {
                 let app_handle = app.handle().clone();
                 let state_clone = state_for_lunar;
                 std::thread::spawn(move || {
+                    // Brief delay to let the UI load first
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+
                     let lunar_count: i64 = state_clone.db.conn.lock().unwrap()
                         .query_row("SELECT COUNT(*) FROM lunar_calendar", [], |r| r.get(0))
                         .unwrap_or(0);
@@ -1606,12 +1615,19 @@ pub fn run() {
                                     #[derive(serde::Deserialize)]
                                     struct LunarEntry { data: String, idade_lua: f64, iluminacao: f64, fase: String }
                                     if let Ok(entries) = serde_json::from_str::<Vec<LunarEntry>>(&json_data) {
-                                        let conn = state_clone.db.conn.lock().unwrap();
-                                        for entry in &entries {
-                                            conn.execute(
-                                                "INSERT OR IGNORE INTO lunar_calendar (data, idade_lua, iluminacao, fase) VALUES (?1, ?2, ?3, ?4)",
-                                                rusqlite::params![entry.data, entry.idade_lua, entry.iluminacao, entry.fase]
-                                            ).ok();
+                                        // Insert in batches of 500, releasing the lock between batches
+                                        for chunk in entries.chunks(500) {
+                                            let conn = state_clone.db.conn.lock().unwrap();
+                                            conn.execute_batch("BEGIN").ok();
+                                            for entry in chunk {
+                                                conn.execute(
+                                                    "INSERT OR IGNORE INTO lunar_calendar (data, idade_lua, iluminacao, fase) VALUES (?1, ?2, ?3, ?4)",
+                                                    rusqlite::params![entry.data, entry.idade_lua, entry.iluminacao, entry.fase]
+                                                ).ok();
+                                            }
+                                            conn.execute_batch("COMMIT").ok();
+                                            drop(conn); // Release lock between batches
+                                            std::thread::sleep(std::time::Duration::from_millis(50));
                                         }
                                         log::info!("Calendario lunar importado em background: {} dias", entries.len());
                                     }
@@ -1678,6 +1694,7 @@ pub fn run() {
             ai_chat,
             ai_query_db,
             track_page,
+            track_first_install_cmd,
             open_url,
             get_ai_config,
             save_ai_config,

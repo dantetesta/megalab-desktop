@@ -211,6 +211,7 @@ export const api = {
   aiChat: (config: AiConfig, messages: AiMessage[], gameType?: string) => invoke<AiResponse>('ai_chat', { config, messages, gameType: gameType || null }),
   aiQueryDb: (sql: string) => invoke<string>('ai_query_db', { sql }),
   trackPage: (page: string) => invoke<void>('track_page', { page }).catch(() => {}),
+  trackFirstInstall: () => invoke<void>('track_first_install_cmd').catch(() => {}),
   getAiConfig: () => invoke<AiConfig | null>('get_ai_config'),
   saveAiConfig: (config: AiConfig) => invoke<void>('save_ai_config', { config }),
   aiSaveGames: (games: AiGameToSave[]) => invoke<string>('ai_save_games', { games }),

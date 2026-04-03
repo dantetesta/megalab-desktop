@@ -2144,7 +2144,7 @@ dependencies = [
 
 [[package]]
 name = "lotolab"
-version = "4.2.3"
+version = "4.2.8"
 dependencies = [
  "chrono",
  "dirs 5.0.1",

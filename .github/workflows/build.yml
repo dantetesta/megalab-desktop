@@ -1,4 +1,4 @@
-name: Build LotoLab
+name: Build LotoLogic
 
 on:
   push:
@@ -31,13 +31,13 @@ jobs:
       - name: Upload Windows NSIS
         uses: actions/upload-artifact@v4
         with:
-          name: LotoLab-Windows-Setup
+          name: LotoLogic-Windows-Setup
           path: src-tauri/target/release/bundle/nsis/*.exe
 
       - name: Upload Windows MSI
         uses: actions/upload-artifact@v4
         with:
-          name: LotoLab-Windows-MSI
+          name: LotoLogic-Windows-MSI
           path: src-tauri/target/release/bundle/msi/*.msi
 
   build-macos-silicon:
@@ -67,7 +67,7 @@ jobs:
       - name: Upload macOS Silicon DMG
         uses: actions/upload-artifact@v4
         with:
-          name: LotoLab-macOS-Silicon
+          name: LotoLogic-macOS-Silicon
           path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
 
   build-macos-intel:
@@ -97,7 +97,7 @@ jobs:
       - name: Upload macOS Intel DMG
         uses: actions/upload-artifact@v4
         with:
-          name: LotoLab-macOS-Intel
+          name: LotoLogic-macOS-Intel
           path: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
 
   build-linux:
@@ -135,11 +135,47 @@ jobs:
       - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
         with:
-          name: LotoLab-Linux-AppImage
+          name: LotoLogic-Linux-AppImage
           path: src-tauri/target/release/bundle/appimage/*.AppImage
 
       - name: Upload Linux deb
         uses: actions/upload-artifact@v4
         with:
-          name: LotoLab-Linux-deb
+          name: LotoLogic-Linux-deb
           path: src-tauri/target/release/bundle/deb/*.deb
+
+  release:
+    needs: [build-windows, build-macos-silicon, build-macos-intel, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: echo "version=$(jq -r .version src-tauri/tauri.conf.json)" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: List artifacts
+        run: find release-artifacts -type f
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: LotoLogic v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release-artifacts/LotoLogic-Windows-Setup/*
+            release-artifacts/LotoLogic-Windows-MSI/*
+            release-artifacts/LotoLogic-macOS-Silicon/*
+            release-artifacts/LotoLogic-macOS-Intel/*
+            release-artifacts/LotoLogic-Linux-AppImage/*
+            release-artifacts/LotoLogic-Linux-deb/*

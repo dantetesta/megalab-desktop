@@ -63,12 +63,30 @@ pub fn track_event(event_name: &str, params: serde_json::Value) {
 
 pub fn track_app_open() {
     let os_version = os_info::get();
+    let session_id = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .to_string();
     track_event("app_open", serde_json::json!({
-        "app_version": "4.0.0",
+        "app_version": env!("CARGO_PKG_VERSION"),
         "platform": std::env::consts::OS,
         "arch": std::env::consts::ARCH,
         "os_version": os_version.to_string(),
         "language": std::env::var("LANG").unwrap_or_default(),
+        "session_id": session_id,
+        "engagement_time_msec": "1",
+    }));
+}
+
+pub fn track_first_install() {
+    let os_version = os_info::get();
+    track_event("first_install", serde_json::json!({
+        "app_version": env!("CARGO_PKG_VERSION"),
+        "platform": std::env::consts::OS,
+        "arch": std::env::consts::ARCH,
+        "os_version": os_version.to_string(),
+        "engagement_time_msec": "1",
     }));
 }
 

@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# LotoLogic - Laboratorio de Loterias
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ferramenta desktop completa de analise para loterias CAIXA. Desenvolvida com Tauri 2 + React + Rust.
 
-Currently, two official plugins are available:
+## Download
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Baixe a versao mais recente para seu sistema operacional:
 
-## React Compiler
+| Plataforma | Link |
+|------------|------|
+| macOS (Apple Silicon) | [LotoLogic_aarch64.dmg](https://github.com/dantetesta/megalab-desktop/releases/latest) |
+| macOS (Intel) | [LotoLogic_x64.dmg](https://github.com/dantetesta/megalab-desktop/releases/latest) |
+| Windows (Setup) | [LotoLogic_x64-setup.exe](https://github.com/dantetesta/megalab-desktop/releases/latest) |
+| Windows (MSI) | [LotoLogic_x64_en-US.msi](https://github.com/dantetesta/megalab-desktop/releases/latest) |
+| Linux (AppImage) | [LotoLogic_amd64.AppImage](https://github.com/dantetesta/megalab-desktop/releases/latest) |
+| Linux (deb) | [LotoLogic_amd64.deb](https://github.com/dantetesta/megalab-desktop/releases/latest) |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Todos os instaladores estao disponiveis na pagina de [Releases](https://github.com/dantetesta/megalab-desktop/releases).
 
-## Expanding the ESLint configuration
+## Funcionalidades
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Analise estatistica completa de todas as loterias CAIXA
+- Gerador inteligente de jogos com multiplas estrategias
+- LotoCore Engine - motor de geracao com 9 algoritmos combinados
+- SuperLab - laboratorio avancado com backtest, Monte Carlo, genetico e mais
+- Assistente IA integrado (OpenAI / Gemini)
+- Calendario lunar correlacionado com sorteios
+- Gerenciamento de apostas com conferencia automatica
+- Dashboard interativo com graficos e estatisticas
+- Importacao/exportacao de dados (CSV, SQL)
+- Suporte a 9 loterias: Mega-Sena, Lotofacil, Quina, Lotomania, Timemania, Dupla Sena, Dia de Sorte, Super Sete, +Milionaria
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tech Stack
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **Frontend:** React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Recharts, Zustand
+- **Backend:** Rust, Tauri 2, SQLite (rusqlite), Tokio
+- **Build:** Vite 8, GitHub Actions (CI/CD multi-plataforma)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Desenvolvimento
+
+```bash
+# Instalar dependencias
+npm install
+
+# Rodar em modo dev
+npm run dev:tauri
+
+# Build de producao
+npx tauri build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Autor
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+**Dante Testa** - [lotologic.com.br](https://lotologic.com.br)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Licenca
+
+MIT
